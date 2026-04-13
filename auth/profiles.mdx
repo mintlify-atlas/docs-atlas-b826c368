@@ -1,0 +1,92 @@
+---
+title: 'Managing Chrome profiles for Canvas MCP'
+description: 'Select a Chrome profile when multiple profiles have Canvas sessions. Use CLI commands or environment variables to control which profile Canvas MCP reads.'
+keywords: ['canvas mcp', 'chrome profiles', 'canvas settings', 'choose-profile', 'CANVAS_CHROME_PROFILE']
+---
+
+Chrome profiles let one Chrome installation hold separate browsing sessions for different accounts. If you have more than one Chrome profile and more than one of them is signed into a Canvas site, Canvas MCP needs to know which profile to read cookies from.
+
+## Listing available profiles
+
+To see every Chrome profile Canvas MCP can find, along with the Canvas domains each profile has sessions for:
+
+```bash
+canvas settings profiles
+```
+
+The output is JSON. Each entry includes the profile name, its path, any detected Canvas domains, and whether auth is currently verified for that profile.
+
+## Selecting a profile
+
+### Interactive selection
+
+Run the command without arguments to choose interactively:
+
+```bash
+canvas settings choose-profile
+```
+
+Canvas MCP prints a numbered list of profiles and prompts you to enter a number. The selection is saved to `~/.config/canvasmcp/settings.json` and used for all future runs.
+
+<Note>
+Interactive selection requires a terminal (TTY). In headless or scripted environments, pass the profile name as an argument instead.
+</Note>
+
+### Select by domain or name
+
+Pass a Canvas domain or Chrome profile name to select without a prompt:
+
+```bash
+canvas settings choose-profile "terpmail.umd.edu"
+```
+
+Canvas MCP looks up the profile whose name or directory matches the argument, saves it, and prints the saved selection as JSON.
+
+## Viewing current settings
+
+```bash
+canvas settings show
+```
+
+This shows the saved profile selection alongside a live auth status check.
+
+## Resetting to defaults
+
+```bash
+canvas settings clear
+```
+
+This removes any saved profile selection. After clearing, Canvas MCP falls back to auto-detection (or uses environment variables if they are set).
+
+## Environment variable overrides
+
+You can override the saved profile at any time using environment variables. These take precedence over anything saved with `canvas settings choose-profile`.
+
+| Variable | Description |
+|---|---|
+| `CANVAS_CHROME_PROFILE` | Chrome profile name (e.g. `"terpmail.umd.edu"` or `"Default"`). Canvas MCP matches this against the profile's display name or directory name. |
+| `CANVAS_CHROME_PROFILE_PATH` | Absolute path to a Chrome profile directory. Use this when the name is ambiguous or when pointing to a non-standard Chrome installation. |
+
+```bash
+export CANVAS_CHROME_PROFILE="terpmail.umd.edu"
+canvas auth-status
+```
+
+```bash
+export CANVAS_CHROME_PROFILE_PATH="/home/user/.config/google-chrome/Profile 3"
+canvas auth-status
+```
+
+<Tip>
+If both `CANVAS_CHROME_PROFILE` and `CANVAS_CHROME_PROFILE_PATH` are set, `CANVAS_CHROME_PROFILE_PATH` takes precedence because it is an exact directory reference.
+</Tip>
+
+## Settings persistence
+
+| Method | Persists across runs? | Can be overridden? |
+|---|---|---|
+| `canvas settings choose-profile` | Yes, saved to `settings.json` | Yes, by env vars |
+| `CANVAS_CHROME_PROFILE` env var | No, session only | — |
+| `CANVAS_CHROME_PROFILE_PATH` env var | No, session only | — |
+
+Environment variables always win over saved settings. If neither is set, the saved settings file is used. If that is also empty, Canvas MCP uses the default Chrome profile.

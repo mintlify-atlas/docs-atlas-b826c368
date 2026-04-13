@@ -1,0 +1,100 @@
+---
+title: 'Environment variables for Canvas MCP authentication'
+description: 'Reference for all environment variables that control how Canvas MCP resolves your Canvas domain and selects a Chrome profile for cookie-based auth.'
+keywords: ['canvas mcp', 'environment variables', 'CANVAS_BASE_URL', 'CANVAS_CHROME_PROFILE', 'CANVAS_CHROME_PROFILE_PATH']
+---
+
+Canvas MCP reads three environment variables to control authentication behavior. All are optional — if none are set, Canvas MCP auto-detects your Canvas domain and uses the default Chrome profile.
+
+## `CANVAS_BASE_URL`
+
+The Canvas instance you want Canvas MCP to connect to.
+
+| Detail | Value |
+|---|---|
+| **Format** | Full URL including scheme, e.g. `https://school.instructure.com` |
+| **When to set** | When Chrome has sessions for more than one Canvas domain, or when you want to pin a specific instance |
+| **If omitted** | Canvas MCP scans Chrome cookies and uses the domain automatically if exactly one Canvas domain has a complete session |
+
+```bash
+export CANVAS_BASE_URL=https://school.instructure.com
+```
+
+<Warning>
+If Chrome has sessions for multiple Canvas domains and `CANVAS_BASE_URL` is not set, Canvas MCP cannot auto-detect which one to use and will exit with an error listing the ambiguous domains. Set this variable to resolve the conflict.
+</Warning>
+
+## `CANVAS_CHROME_PROFILE`
+
+The name of the Chrome profile to read cookies from.
+
+| Detail | Value |
+|---|---|
+| **Format** | Profile display name or directory name, e.g. `"terpmail.umd.edu"` or `"Default"` |
+| **When to set** | When multiple Chrome profiles exist and the one with your Canvas session is not the default |
+| **If omitted** | The profile saved via `canvas settings choose-profile` is used; if none is saved, the default Chrome profile is used |
+
+```bash
+export CANVAS_CHROME_PROFILE="terpmail.umd.edu"
+```
+
+Canvas MCP matches this value case-insensitively against both the profile's display name (e.g. "terpmail.umd.edu") and its directory name (e.g. "Profile 3").
+
+## `CANVAS_CHROME_PROFILE_PATH`
+
+The absolute path to a Chrome profile directory.
+
+| Detail | Value |
+|---|---|
+| **Format** | Absolute filesystem path, e.g. `/home/user/.config/google-chrome/Profile 3` |
+| **When to set** | When you need to point to a specific directory — useful for non-standard Chrome installations or when the profile name is ambiguous |
+| **If omitted** | Falls back to `CANVAS_CHROME_PROFILE`, then saved settings, then the default profile |
+
+```bash
+export CANVAS_CHROME_PROFILE_PATH="/home/user/.config/google-chrome/Profile 3"
+```
+
+<Note>
+`CANVAS_CHROME_PROFILE_PATH` takes precedence over `CANVAS_CHROME_PROFILE` when both are set, because a path is unambiguous.
+</Note>
+
+## Precedence order
+
+When Canvas MCP resolves which profile to use, it checks in this order:
+
+1. `CANVAS_CHROME_PROFILE_PATH` (most specific)
+2. `CANVAS_CHROME_PROFILE`
+3. Saved settings (`canvas settings choose-profile`)
+4. Default Chrome profile (auto-detected)
+
+For the base URL:
+
+1. `CANVAS_BASE_URL`
+2. Auto-detection from Chrome cookies
+
+## Shell export example
+
+```bash
+# Pin a Canvas domain and select a Chrome profile by name
+export CANVAS_BASE_URL=https://school.instructure.com
+export CANVAS_CHROME_PROFILE="terpmail.umd.edu"
+
+# Verify everything is working
+canvas auth-status
+```
+
+You can add these exports to your shell profile (`~/.zshrc`, `~/.bashrc`, etc.) to apply them permanently.
+
+## Multiple Canvas domains
+
+If you are signed into more than one Canvas site across your Chrome profiles — for example, one for a university and one for a workplace — set `CANVAS_BASE_URL` to the domain you want Canvas MCP to use. Without it, Canvas MCP will see multiple Canvas sessions and refuse to guess.
+
+```bash
+# University instance
+export CANVAS_BASE_URL=https://university.instructure.com
+export CANVAS_CHROME_PROFILE="University"
+
+# Workplace instance (swap these when switching)
+# export CANVAS_BASE_URL=https://company.instructure.com
+# export CANVAS_CHROME_PROFILE="Work"
+```

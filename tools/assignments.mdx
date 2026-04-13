@@ -1,0 +1,267 @@
+---
+title: 'Assignment Tools: Lists, Details & Submissions'
+description: 'Reference for list_course_assignments, get_assignment_details, list_assignment_groups, and list_course_submissions — all Canvas MCP assignment tools.'
+keywords: ['canvas mcp', 'list assignments', 'assignment details', 'assignment groups', 'submissions', 'grades', 'buckets']
+---
+
+The assignment tools cover everything from browsing upcoming work to retrieving full rubric details and submission history. All four tools require a `course_id`; use `list_courses` or `resolve_course` to obtain one.
+
+---
+
+## list_course_assignments
+
+Lists assignments for a course. Supports filtering by keyword, lifecycle bucket, and whether to include the current user's submission alongside each assignment.
+
+### Parameters
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<Expandable title="Optional parameters">
+  <ParamField path="bucket" type="string">
+    Filter assignments by lifecycle state. Allowed values:
+
+    | Value | Description |
+    |---|---|
+    | `past` | Due date has passed and the assignment is closed. |
+    | `overdue` | Past due with no submission. |
+    | `undated` | No due date assigned. |
+    | `ungraded` | Submitted but not yet graded. |
+    | `unsubmitted` | Not yet submitted by the current user. |
+    | `upcoming` | Due within the next week. |
+    | `future` | Due more than one week from now. |
+  </ParamField>
+
+  <ParamField path="search" type="string">
+    Filter assignments by name. Case-insensitive substring match.
+  </ParamField>
+
+  <ParamField path="include_submission" type="boolean" default="false">
+    When `true`, attaches the current user's submission object to each assignment. Defaults to `false`.
+  </ParamField>
+
+  <ParamField path="limit" type="integer">
+    Maximum number of assignments to return. Must be between `1` and `300`. Defaults to `100`.
+  </ParamField>
+</Expandable>
+
+### Response
+
+<ResponseField name="course_id" type="string" required>Canvas course ID.</ResponseField>
+<ResponseField name="count" type="integer" required>Number of assignments returned.</ResponseField>
+<ResponseField name="assignments" type="object[]" required>
+  <Expandable title="Assignment object fields">
+    <ResponseField name="id" type="string">Canvas assignment ID.</ResponseField>
+    <ResponseField name="id_aliases" type="string[]">All known ID aliases (short, tilde, and full Canvas formats).</ResponseField>
+    <ResponseField name="name" type="string">Assignment name.</ResponseField>
+    <ResponseField name="due_at" type="string">ISO datetime the assignment is due. `null` if undated.</ResponseField>
+    <ResponseField name="unlock_at" type="string">ISO datetime the assignment unlocks.</ResponseField>
+    <ResponseField name="lock_at" type="string">ISO datetime the assignment locks for submissions.</ResponseField>
+    <ResponseField name="points_possible" type="number">Total points the assignment is worth.</ResponseField>
+    <ResponseField name="html_url" type="string">Direct URL to the assignment in Canvas.</ResponseField>
+    <ResponseField name="submission_types" type="string[]">Allowed submission types, e.g. `["online_text_entry", "online_upload"]`.</ResponseField>
+    <ResponseField name="discussion_topic_id" type="string">ID of the linked discussion topic if the assignment type is a discussion.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```bash
+canvas tool run list_course_assignments --args '{"course_id": "112233", "bucket": "upcoming", "include_submission": true}'
+```
+
+---
+
+## get_assignment_details
+
+Returns full details for a single assignment, including description, grading configuration, allowed extensions, and optional submission data.
+
+### Parameters
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<ParamField path="assignment_id" type="string" required>
+  Canvas assignment ID. Obtainable from `list_course_assignments` or `resolve_canvas_url`.
+</ParamField>
+
+<Expandable title="Optional parameters">
+  <ParamField path="include_submission" type="boolean" default="false">
+    When `true`, includes the current user's submission in the response. Defaults to `false`.
+  </ParamField>
+</Expandable>
+
+### Response
+
+<ResponseField name="course_id" type="string" required>Canvas course ID.</ResponseField>
+<ResponseField name="assignment" type="object" required>
+  <Expandable title="Assignment detail fields">
+    <ResponseField name="id" type="string">Canvas assignment ID.</ResponseField>
+    <ResponseField name="id_aliases" type="string[]">All known ID aliases.</ResponseField>
+    <ResponseField name="name" type="string">Assignment name.</ResponseField>
+    <ResponseField name="description" type="string">Full assignment description as raw HTML.</ResponseField>
+    <ResponseField name="due_at" type="string">ISO datetime the assignment is due.</ResponseField>
+    <ResponseField name="unlock_at" type="string">ISO datetime the assignment unlocks.</ResponseField>
+    <ResponseField name="lock_at" type="string">ISO datetime the assignment locks.</ResponseField>
+    <ResponseField name="points_possible" type="number">Total points possible.</ResponseField>
+    <ResponseField name="html_url" type="string">Direct URL to the assignment in Canvas.</ResponseField>
+    <ResponseField name="published" type="boolean">Whether the assignment is published.</ResponseField>
+    <ResponseField name="submission_types" type="string[]">Allowed submission types.</ResponseField>
+    <ResponseField name="grading_type" type="string">Grading method, e.g. `"points"`, `"percent"`, `"letter_grade"`, `"pass_fail"`.</ResponseField>
+    <ResponseField name="allowed_extensions" type="string[]">File extensions permitted for upload submissions.</ResponseField>
+    <ResponseField name="has_submitted_submissions" type="boolean">Whether any student has submitted.</ResponseField>
+    <ResponseField name="discussion_topic_id" type="string">ID of the linked discussion topic, if any.</ResponseField>
+    <ResponseField name="discussion_topic" type="object">Full discussion topic object when the assignment is a discussion type.</ResponseField>
+    <ResponseField name="submission" type="object">The current user's submission object when `include_submission` is `true`.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```bash
+canvas tool run get_assignment_details --args '{"course_id": "112233", "assignment_id": "789012", "include_submission": true}'
+```
+
+---
+
+## list_assignment_groups
+
+Lists the assignment groups (grading categories) for a course and optionally expands each group to include its assignments and submission data. Assignment groups represent weighted grading buckets such as "Homework (20%)" or "Exams (50%)".
+
+### Parameters
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<Expandable title="Optional parameters">
+  <ParamField path="include_assignments" type="boolean" default="false">
+    When `true`, includes the list of assignments within each group. Defaults to `false`.
+  </ParamField>
+
+  <ParamField path="include_submission" type="boolean" default="false">
+    When `true`, attaches the current user's submission to each assignment in the group. Requires `include_assignments` to be `true` to have any effect. Defaults to `false`.
+  </ParamField>
+
+  <ParamField path="limit" type="integer">
+    Maximum number of assignment groups to return. Must be between `1` and `300`. Defaults to `100`.
+  </ParamField>
+</Expandable>
+
+### Response
+
+<ResponseField name="course_id" type="string" required>Canvas course ID.</ResponseField>
+<ResponseField name="count" type="integer" required>Number of assignment groups returned.</ResponseField>
+<ResponseField name="assignment_groups" type="object[]" required>
+  <Expandable title="Assignment group fields">
+    <ResponseField name="id" type="string">Assignment group ID.</ResponseField>
+    <ResponseField name="name" type="string">Group name, e.g. `"Homework"`.</ResponseField>
+    <ResponseField name="group_weight" type="number">Percentage weight of this group in the final grade. `null` if weights are not used.</ResponseField>
+    <ResponseField name="position" type="integer">Ordered position within the gradebook.</ResponseField>
+    <ResponseField name="rules" type="object">Drop rules object (e.g. `drop_lowest`, `drop_highest`, `never_drop`).</ResponseField>
+    <ResponseField name="assignments_count" type="integer">Total number of assignments in the group.</ResponseField>
+    <ResponseField name="assignments" type="object[]">
+      Array of assignment objects when `include_assignments` is `true`. Each entry has the same fields as `list_course_assignments` plus a `submission` field when `include_submission` is `true`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```bash
+canvas tool run list_assignment_groups --args '{"course_id": "112233", "include_assignments": true, "include_submission": true}'
+```
+
+---
+
+## list_course_submissions
+
+Lists submissions for a student in a course. Defaults to the authenticated user (`self`). Supports filtering by assignment IDs, workflow state, and submission timestamps, and can include additional Canvas sideloads via `include`.
+
+<Warning>
+  Querying submissions for a `student_id` other than `self` requires your Canvas account to have course-wide submission read access for that course.
+</Warning>
+
+### Parameters
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<Expandable title="Optional parameters">
+  <ParamField path="student_id" type="string" default="self">
+    Canvas user ID of the student to query. Defaults to `"self"` (the authenticated user).
+  </ParamField>
+
+  <ParamField path="assignment_ids" type="string[]">
+    Limit results to submissions for specific assignment IDs. ID aliases (short, tilde, and full formats) are all accepted and normalized automatically.
+  </ParamField>
+
+  <ParamField path="workflow_state" type="string">
+    Filter by submission workflow state, e.g. `"submitted"`, `"graded"`, `"pending_review"`, `"unsubmitted"`.
+  </ParamField>
+
+  <ParamField path="submitted_since" type="string">
+    ISO datetime string. Only return submissions submitted on or after this time.
+  </ParamField>
+
+  <ParamField path="graded_since" type="string">
+    ISO datetime string. Only return submissions graded on or after this time.
+  </ParamField>
+
+  <ParamField path="include" type="string[]">
+    Additional Canvas sideloads to attach. Common values: `"assignment"`, `"submission_comments"`, `"rubric_assessment"`, `"user"`, `"visibility"`.
+  </ParamField>
+
+  <ParamField path="grouped" type="boolean" default="false">
+    When `true`, requests grouped submission data from Canvas. The response is automatically flattened back to a flat list. Defaults to `false`.
+  </ParamField>
+
+  <ParamField path="limit" type="integer">
+    Maximum number of submissions to return. Must be between `1` and `300`. Defaults to `200`.
+  </ParamField>
+</Expandable>
+
+### Response
+
+<ResponseField name="course_id" type="string" required>Canvas course ID.</ResponseField>
+<ResponseField name="count" type="integer" required>Number of submissions returned.</ResponseField>
+<ResponseField name="submissions" type="object[]" required>
+  <Expandable title="Submission object fields">
+    <ResponseField name="id" type="string">Canvas submission ID.</ResponseField>
+    <ResponseField name="assignment_id" type="string">ID of the assignment this submission belongs to.</ResponseField>
+    <ResponseField name="assignment_id_aliases" type="string[]">All known ID aliases for the assignment.</ResponseField>
+    <ResponseField name="assignment_name" type="string">Assignment name. Present when the `"assignment"` sideload is included.</ResponseField>
+    <ResponseField name="user_id" type="string">Canvas user ID of the submitter.</ResponseField>
+    <ResponseField name="score" type="number">Numeric score awarded. `null` if ungraded.</ResponseField>
+    <ResponseField name="grade" type="string">Letter or percentage grade. `null` if ungraded.</ResponseField>
+    <ResponseField name="entered_score" type="number">Score before any late penalties are applied.</ResponseField>
+    <ResponseField name="submitted_at" type="string">ISO datetime of submission. `null` if not submitted.</ResponseField>
+    <ResponseField name="graded_at" type="string">ISO datetime of grading. `null` if ungraded.</ResponseField>
+    <ResponseField name="late" type="boolean">Whether the submission was late.</ResponseField>
+    <ResponseField name="missing" type="boolean">Whether the submission is missing.</ResponseField>
+    <ResponseField name="excused" type="boolean">Whether the submission is excused.</ResponseField>
+    <ResponseField name="workflow_state" type="string">Submission workflow state.</ResponseField>
+    <ResponseField name="submission_type" type="string">How the assignment was submitted, e.g. `"online_upload"`, `"online_text_entry"`, `"discussion_topic"`.</ResponseField>
+    <ResponseField name="attempt" type="integer">Submission attempt number.</ResponseField>
+    <ResponseField name="url" type="string">URL submitted, for URL-type submissions.</ResponseField>
+    <ResponseField name="body" type="string">Text body, for text-entry submissions.</ResponseField>
+    <ResponseField name="preview_url" type="string">Canvas submission preview URL.</ResponseField>
+    <ResponseField name="attachments" type="object[]">Array of file attachment objects.</ResponseField>
+    <ResponseField name="submission_comments" type="object[]">Array of submission comment objects. Present when the `"submission_comments"` sideload is included.</ResponseField>
+    <ResponseField name="rubric_assessment" type="object">Rubric assessment data. Present when the `"rubric_assessment"` sideload is included.</ResponseField>
+    <ResponseField name="discussion_entries" type="object[]">Discussion entries for discussion-type submissions.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```bash
+canvas tool run list_course_submissions --args '{"course_id": "112233", "student_id": "self", "workflow_state": "graded", "limit": 50}'
+```
+
+```bash
+canvas tool run list_course_submissions --args '{"course_id": "112233", "assignment_ids": ["789012", "789013"], "include": ["assignment", "submission_comments"]}'
+```

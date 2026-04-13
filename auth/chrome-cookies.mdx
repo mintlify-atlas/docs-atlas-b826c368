@@ -1,0 +1,84 @@
+---
+title: 'Chrome cookie authentication in Canvas MCP'
+description: 'Canvas MCP reads your active Chrome session cookies so you never need an API token. Learn what to expect on macOS and how to fix missing-cookie errors.'
+keywords: ['canvas mcp', 'chrome cookies', 'browser_cookie3', 'keychain', 'canvas session', 'csrf token']
+---
+
+Canvas MCP authenticates by reading two cookies — `canvas_session` and `_csrf_token` — directly from your Chrome browser. You sign into Canvas in Chrome as you normally would, and Canvas MCP uses that session. No API token, no separate credential setup.
+
+## How cookies are read
+
+Canvas MCP uses the [`browser_cookie3`](https://github.com/borisbabic/browser_cookie3) library to access Chrome's local cookie store. Cookies are read fresh on every request, so if Canvas rotates your session or CSRF token, Canvas MCP picks up the new values automatically without any action on your part.
+
+<Note>
+Only Chrome is supported. Firefox, Safari, and other browsers are not read.
+</Note>
+
+## macOS Keychain prompt
+
+Chrome on macOS encrypts its cookie database using a key stored in your system Keychain. When Canvas MCP reads cookies for the first time, macOS displays a prompt:
+
+> **"python" wants to use your confidential information stored in "Chrome Safe Storage" in your keychain.**
+
+This is expected. Your options:
+
+- **Allow** — grants access for this invocation only. You will see the prompt again on future runs.
+- **Always Allow** — grants persistent access. Recommended if you use Canvas MCP regularly.
+
+<Warning>
+If you click "Deny", Canvas MCP cannot read your cookies and every command will fail with an auth error. Re-run the command and click "Allow" or "Always Allow".
+</Warning>
+
+## What happens when cookies are missing
+
+If Chrome does not have a valid Canvas session for the resolved domain, Canvas MCP raises an error like one of these:
+
+```
+No usable Canvas session was found in Chrome for https://school.instructure.com.
+Open that site in Chrome, sign in, and retry.
+```
+
+```
+No usable Canvas session was found in Chrome for https://school.instructure.com.
+Chrome currently has Canvas sessions for: other.instructure.com.
+Sign into the target site in Chrome and retry.
+```
+
+The second message means Chrome has a session for a *different* Canvas domain than the one Canvas MCP is targeting. Either sign into the correct site in Chrome, or set `CANVAS_BASE_URL` to match the domain Chrome already has a session for.
+
+## Diagnosing auth issues
+
+Run `canvas auth-status` to get a full picture of what Canvas MCP can see:
+
+```bash
+canvas auth-status
+```
+
+The output includes:
+
+- `detected_canvas_domains` — Canvas domains Chrome currently has complete sessions for.
+- `resolved_canvas_base_url` — the domain Canvas MCP is targeting.
+- `auth_status` — one of `verified`, `no_cookies`, `not_logged_in`, `probe_failed`, or `unexpected_response`.
+- `error` — a plain-English description of the problem, if any.
+
+<Steps>
+  <Step title="Run auth-status">
+    ```bash
+    canvas auth-status
+    ```
+  </Step>
+  <Step title="Check detected_canvas_domains">
+    If the list is empty, open your Canvas site in Chrome and sign in, then run `auth-status` again.
+  </Step>
+  <Step title="Check resolved_canvas_base_url">
+    If this does not match the Canvas site you want, set `CANVAS_BASE_URL` to the correct domain.
+
+    ```bash
+    export CANVAS_BASE_URL=https://school.instructure.com
+    canvas auth-status
+    ```
+  </Step>
+  <Step title="Check auth_status">
+    `verified` means everything is working. Any other value means the probe failed — read the `error` field for details.
+  </Step>
+</Steps>

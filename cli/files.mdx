@@ -1,0 +1,126 @@
+---
+title: 'canvas files — list, download, and browse course folders'
+description: 'Reference for canvas files list, download, and folders: search and sort options, force-refresh cache behavior, and folder hierarchy browsing.'
+keywords: ['canvas', 'cli', 'files', 'download', 'folders', 'course files']
+---
+
+The `canvas files` subcommand group lets you list files in a course, download a file to local temporary storage, and browse the course folder hierarchy. All output is printed as pretty-printed JSON.
+
+## `canvas files list`
+
+List files in a Canvas course.
+
+```bash
+canvas files list 12345
+canvas files list 12345 --search "syllabus"
+canvas files list 12345 --sort size --order desc
+canvas files list 12345 --search "lecture" --limit 25
+```
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<ParamField path="--search" type="string">
+  Filter files by name. Case-insensitive substring match.
+</ParamField>
+
+<ParamField path="--sort" type="string">
+  Sort key for the returned files. Passed directly to the Canvas API. Common values include `name`, `size`, `created_at`, and `updated_at`.
+</ParamField>
+
+<ParamField path="--order" type="string">
+  Sort order: `asc` (ascending) or `desc` (descending). Has no effect without `--sort`.
+</ParamField>
+
+<ParamField path="--limit" type="number" default="100">
+  Maximum number of files to return.
+</ParamField>
+
+### Examples
+
+List all files, sorted by size descending:
+
+```bash
+canvas files list 12345 --sort size --order desc
+```
+
+Search for PDF files:
+
+```bash
+canvas files list 12345 --search ".pdf"
+```
+
+---
+
+## `canvas files download`
+
+Download a course file to local temporary storage. The response includes the local path to the downloaded file.
+
+```bash
+canvas files download 12345 67890
+canvas files download 12345 67890 --force-refresh
+```
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<ParamField path="file_id" type="string" required>
+  Canvas file ID. Use `canvas files list` to find file IDs.
+</ParamField>
+
+<ParamField path="--force-refresh" type="boolean" default="false">
+  Re-download the file even if a cached local copy already exists.
+</ParamField>
+
+<Note>
+  Files are saved to a local temporary directory managed by the MCP server. The JSON response includes the path to the downloaded file on disk.
+</Note>
+
+### Examples
+
+Download a file (uses cached copy if available):
+
+```bash
+canvas files download 12345 67890
+```
+
+Force a fresh download, bypassing the local cache:
+
+```bash
+canvas files download 12345 67890 --force-refresh
+```
+
+---
+
+## `canvas files folders`
+
+List the folder hierarchy for a Canvas course.
+
+```bash
+canvas files folders 12345
+canvas files folders 12345 --limit 50
+```
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<ParamField path="--limit" type="number" default="150">
+  Maximum number of folders to return.
+</ParamField>
+
+### Examples
+
+List all folders in a course:
+
+```bash
+canvas files folders 12345
+```
+
+Limit the folder list to the top 20 folders:
+
+```bash
+canvas files folders 12345 --limit 20
+```

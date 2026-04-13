@@ -1,0 +1,296 @@
+---
+title: 'Canvas CLI — commands, auth, and escape hatches'
+description: 'Complete reference for the canvas command-line tool: top-level subcommands, global auth behavior, the tool escape hatch, and the auth-status diagnostic.'
+keywords: ['canvas', 'cli', 'overview', 'commands', 'auth-status', 'tool']
+---
+
+The `canvas` CLI is the local interface to Canvas LMS. It reads your Canvas session directly from Chrome cookies — no API token setup required — and prints all output as JSON. You can install it permanently with `uv tool install .` or run it ad-hoc with `uv run canvas`.
+
+## Installation
+
+<Steps>
+  <Step title="Sync dependencies">
+    ```bash
+    uv sync
+    ```
+  </Step>
+  <Step title="Install the canvas command">
+    ```bash
+    uv tool install .
+    ```
+
+    After installation, the `canvas` command is available globally. To pick up local code changes, reinstall:
+
+    ```bash
+    uv tool install . --reinstall
+    ```
+  </Step>
+  <Step title="Set your Canvas base URL (optional)">
+    If you use more than one Canvas domain in Chrome, set the environment variable so the CLI knows which one to use:
+
+    ```bash
+    export CANVAS_BASE_URL=https://school.instructure.com
+    ```
+
+    If the variable is unset and only one Canvas domain is detected in Chrome cookies, the CLI infers it automatically.
+  </Step>
+</Steps>
+
+<Note>
+  On macOS, Chrome's Keychain will prompt for access on the first run. Click **Allow** or **Always Allow** to proceed.
+</Note>
+
+## Subcommands
+
+<CardGroup cols={2}>
+  <Card title="courses" icon="graduation-cap" href="/cli/courses">
+    List enrolled courses and fuzzy-match a course by name.
+  </Card>
+  <Card title="course" icon="book-open" href="/cli/courses">
+    Course-level subcommands: `overview`, `context`, `syllabus`, `pages`, `page`, `tabs`, `tab`, `people`, `modules`, `grades`, `submissions`.
+  </Card>
+  <Card title="assignments" icon="clipboard-list" href="/cli/assignments">
+    List assignments, show assignment details, and list assignment groups.
+  </Card>
+  <Card title="discussion" icon="message-square" href="/cli/discussions">
+    List discussion topics and fetch a full thread with replies.
+  </Card>
+  <Card title="files" icon="folder" href="/cli/files">
+    List files, download a file to local temp storage, and list folders.
+  </Card>
+  <Card title="settings" icon="settings" href="/cli/settings">
+    Manage saved Chrome profile selection and inspect current auth state.
+  </Card>
+  <Card title="tool" icon="wrench" href="/cli/overview#tool-escape-hatch">
+    Low-level escape hatch: list every underlying MCP tool or call one directly.
+  </Card>
+  <Card title="auth-status" icon="shield-check" href="/cli/overview#auth-status">
+    Run a live Canvas auth probe and return a JSON diagnostic.
+  </Card>
+</CardGroup>
+
+The table below summarises every top-level entry point:
+
+| Command | Description |
+|---|---|
+| `canvas courses` | List enrolled courses (favorites by default). |
+| `canvas resolve <query>` | Fuzzy-match a course by name or code. |
+| `canvas course <sub>` | Course-scoped subcommands (overview, context, …). |
+| `canvas assignments <sub>` | Assignment subcommands (list, show, groups). |
+| `canvas discussion <sub>` | Discussion subcommands (list, show). |
+| `canvas files <sub>` | File subcommands (list, download, folders). |
+| `canvas announcements` | List announcements across one or more courses. |
+| `canvas calendar` | List calendar events. |
+| `canvas url <url>` | Parse a Canvas URL and optionally fetch details. |
+| `canvas today` | Print today's date in ISO format. |
+| `canvas tool list` | List all underlying MCP tool names. |
+| `canvas tool run <name>` | Call any MCP tool by name with a JSON args object. |
+| `canvas settings <sub>` | Chrome profile selection and auth state. |
+| `canvas auth-status` | Live Canvas auth probe returning JSON. |
+
+## Global auth behavior
+
+Before executing any command, the CLI calls `ensure_canvas_auth_configured`, which checks that:
+
+1. A Canvas base URL is available (from `CANVAS_BASE_URL` or auto-detected from Chrome cookies).
+2. A Canvas session cookie exists in Chrome for that domain.
+
+This is a **local precheck only** — it does not make a network request to Canvas. If the check fails, the command exits with code 1 and prints an error.
+
+Two commands bypass the auth precheck entirely:
+
+- `canvas today` — returns the current date without touching Canvas.
+- `canvas auth-status` — runs its own live probe and always returns JSON, even on failure.
+
+## Additional top-level commands
+
+### `canvas announcements`
+
+List announcements across one or more courses.
+
+```bash
+canvas announcements --course 12345
+canvas announcements --course 12345 --course 67890 --start-date 2024-09-01
+canvas announcements --course 12345 --all --limit 50
+```
+
+<ParamField path="--course" type="string" required>
+  Canvas course ID. Repeat the flag to include multiple courses.
+</ParamField>
+
+<ParamField path="--start-date" type="string">
+  ISO datetime lower bound for announcements.
+</ParamField>
+
+<ParamField path="--end-date" type="string">
+  ISO datetime upper bound for announcements.
+</ParamField>
+
+<ParamField path="--active/--all" type="boolean" default="true">
+  `--active` (default) returns only active announcements. `--all` includes inactive ones.
+</ParamField>
+
+<ParamField path="--limit" type="number" default="100">
+  Maximum number of announcements to return.
+</ParamField>
+
+### `canvas calendar`
+
+List calendar events, optionally filtered by course and date range.
+
+```bash
+canvas calendar --course 12345
+canvas calendar --course 12345 --type assignment --start-date 2024-10-01 --end-date 2024-10-31
+```
+
+<ParamField path="--course" type="string">
+  Canvas course ID. Repeat for multiple courses. Omit to query across all courses.
+</ParamField>
+
+<ParamField path="--type" type="string">
+  Event type filter: `event`, `assignment`, or omit for both.
+</ParamField>
+
+<ParamField path="--start-date" type="string">
+  ISO datetime lower bound.
+</ParamField>
+
+<ParamField path="--end-date" type="string">
+  ISO datetime upper bound.
+</ParamField>
+
+<ParamField path="--all-events" type="boolean">
+  Request all matching events instead of the default filtered view.
+</ParamField>
+
+<ParamField path="--limit" type="number" default="100">
+  Maximum number of events to return.
+</ParamField>
+
+### `canvas resolve`
+
+Fuzzy-match a course by name or course code.
+
+```bash
+canvas resolve "biology"
+canvas resolve "bio 101" --all --limit 10
+```
+
+<ParamField path="query" type="string" required>
+  Course name or code to search for.
+</ParamField>
+
+<ParamField path="--all" type="boolean" default="false">
+  Search all active enrollments instead of favorites only.
+</ParamField>
+
+<ParamField path="--limit" type="number" default="5">
+  Maximum number of matches to return.
+</ParamField>
+
+### `canvas url`
+
+Parse a Canvas URL and optionally fetch the linked object's details.
+
+```bash
+canvas url "https://school.instructure.com/courses/12345/assignments/67890"
+canvas url "https://school.instructure.com/courses/12345" --no-details
+```
+
+<ParamField path="url" type="string" required>
+  The Canvas URL to resolve.
+</ParamField>
+
+<ParamField path="--details/--no-details" type="boolean" default="true">
+  Fetch linked object details. Use `--no-details` to parse the URL only.
+</ParamField>
+
+### `canvas today`
+
+Print today's date in ISO format. Does not require auth.
+
+```bash
+canvas today
+```
+
+## Tool escape hatch
+
+`canvas tool` provides direct access to every underlying MCP tool. Use it when you need functionality not yet exposed through a dedicated subcommand.
+
+### `canvas tool list`
+
+Print the names of all available MCP tools as JSON.
+
+```bash
+canvas tool list
+```
+
+```json
+{
+  "tools": [
+    "canvas_get_page",
+    "download_course_file",
+    "get_assignment_details",
+    "get_course_context_snapshot",
+    "..."
+  ]
+}
+```
+
+### `canvas tool run`
+
+Call any MCP tool by name, passing arguments as a JSON object.
+
+```bash
+canvas tool run list_courses --args '{"limit": 10}'
+canvas tool run get_assignment_details --args '{"course_id": "12345", "assignment_id": "67890"}'
+```
+
+<ParamField path="name" type="string" required>
+  The MCP tool name, exactly as shown by `canvas tool list`.
+</ParamField>
+
+<ParamField path="--args" type="string" default="{}">
+  JSON object of tool arguments. Must be a valid JSON object (not an array or scalar).
+</ParamField>
+
+If `name` is not in the list of known tools, the command exits with code 2 and prints the available tool names.
+
+## Auth status
+
+`canvas auth-status` runs a live network probe against Canvas and returns a JSON object. Unlike other commands, it always returns JSON — even when auth fails — making it useful for scripting and diagnostics.
+
+```bash
+canvas auth-status
+```
+
+```json
+{
+  "auth_mode": "chrome-session",
+  "auth_verified": true,
+  "auth_status": "verified",
+  "configured_canvas_base_url": null,
+  "resolved_canvas_base_url": "https://school.instructure.com",
+  "selected_chrome_profile": null,
+  "detected_canvas_domains": ["school.instructure.com"],
+  "probe_status": 200,
+  "error": null
+}
+```
+
+On failure:
+
+```json
+{
+  "auth_mode": null,
+  "auth_verified": false,
+  "auth_status": "no_cookies",
+  "resolved_canvas_base_url": "https://school.instructure.com",
+  "detected_canvas_domains": [],
+  "error": "No usable Canvas session was found in Chrome for https://school.instructure.com."
+}
+```
+
+<Tip>
+  If a command exits with an auth error, run `canvas auth-status` first to confirm the base URL and cookie state, then use `canvas settings choose-profile` if you need to switch Chrome profiles.
+</Tip>

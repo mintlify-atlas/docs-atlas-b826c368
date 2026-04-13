@@ -1,0 +1,88 @@
+---
+title: 'Authentication overview for Canvas MCP'
+description: 'Canvas MCP uses your active Chrome session instead of an API token. Learn how the base URL is resolved and how to verify your auth status.'
+keywords: ['canvas mcp', 'authentication', 'chrome cookies', 'canvas base url', 'auth status']
+---
+
+Canvas MCP authenticates by reading your active Chrome session — no Canvas API token or password is required. As long as you are signed into your school's Canvas site in Chrome, Canvas MCP will use that session automatically.
+
+## How it works
+
+Canvas MCP reads two cookies from your Chrome browser (`canvas_session` and `_csrf_token`) on every request. Because cookies are read fresh each time, any session or CSRF rotation that Canvas performs is picked up automatically without any action on your part.
+
+## Base URL resolution
+
+Before Canvas MCP can read your cookies, it needs to know which Canvas domain to use. It resolves the base URL in this order:
+
+1. **`CANVAS_BASE_URL` environment variable** — if set, this value is used directly.
+2. **Auto-detection** — if `CANVAS_BASE_URL` is not set, Canvas MCP inspects your Chrome cookies and looks for exactly one Canvas domain with a complete session. If it finds one, that domain is used automatically.
+
+<Note>
+Auto-detection only works when Chrome has a session for exactly one Canvas domain. If you are signed into multiple Canvas sites (for example, a personal account and a work account), set `CANVAS_BASE_URL` explicitly so Canvas MCP knows which one to use.
+</Note>
+
+## When to set `CANVAS_BASE_URL`
+
+Set `CANVAS_BASE_URL` explicitly when:
+
+- Chrome has sessions for more than one Canvas domain and auto-detection would be ambiguous.
+- You want to pin a specific Canvas instance regardless of what Chrome currently has open.
+
+```bash
+export CANVAS_BASE_URL=https://school.instructure.com
+```
+
+See [Environment variables](/auth/environment) for the full list of variables you can set.
+
+## Checking your auth status
+
+Run `canvas auth-status` to verify that Canvas MCP can reach your Canvas instance. Unlike other commands, `auth-status` performs a live network probe against the Canvas API and always returns JSON — even when auth fails.
+
+```bash
+canvas auth-status
+```
+
+A successful response looks like this:
+
+```json
+{
+  "auth_mode": "chrome-session",
+  "auth_verified": true,
+  "auth_status": "verified",
+  "configured_canvas_base_url": null,
+  "resolved_canvas_base_url": "https://school.instructure.com",
+  "selected_chrome_profile": null,
+  "selected_chrome_profile_path": null,
+  "resolved_chrome_profile_path": null,
+  "detected_canvas_domains": ["school.instructure.com"],
+  "probe_url": "https://school.instructure.com/api/v1/users/self",
+  "probe_status": 200,
+  "probe_content_type": "application/json; charset=utf-8",
+  "probe_location": null,
+  "error": null
+}
+```
+
+When something is wrong, `auth_verified` is `false` and `error` contains a plain-English description of the problem.
+
+## macOS Keychain prompt
+
+On macOS, the first time Canvas MCP reads Chrome cookies, the system will show a Keychain access prompt. Click **Allow** to grant access for the current session, or **Always Allow** to avoid being prompted on future runs.
+
+<Tip>
+Clicking "Always Allow" saves you from seeing the prompt on every run. Chrome's cookie database is encrypted with a key stored in your Keychain, and Canvas MCP needs that key to read cookies.
+</Tip>
+
+## Learn more
+
+<CardGroup cols={2}>
+  <Card title="Chrome cookies" icon="cookie" href="/auth/chrome-cookies">
+    How Canvas MCP reads your Chrome session and what to do if cookies are missing.
+  </Card>
+  <Card title="Chrome profiles" icon="user" href="/auth/profiles">
+    Select a specific Chrome profile when you have more than one.
+  </Card>
+  <Card title="Environment variables" icon="terminal" href="/auth/environment">
+    Full reference for all environment variables that control auth behavior.
+  </Card>
+</CardGroup>

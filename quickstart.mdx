@@ -1,80 +1,118 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: "From clone to first Canvas query in five minutes"
+description: "Clone the Canvas MCP repo, sync dependencies with uv, verify your Chrome auth session, and connect an AI client in under five minutes."
+keywords: ["canvas mcp", "quickstart", "install", "mcp client", "uv sync"]
 ---
 
-## Get started in three steps
+This page walks you through getting Canvas MCP running end-to-end: cloning the repository, syncing dependencies, verifying that your Chrome session is valid, making your first CLI query, and wiring up an MCP client.
 
-Get your documentation site running locally and make your first customization.
+## Prerequisites
 
-### Step 1: Set up your local environment
+- Python 3.11 or later
+- [uv](https://docs.astral.sh/uv/) installed (`pip install uv` or `brew install uv`)
+- Google Chrome with an active Canvas LMS session
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+<Steps>
+  <Step title="Clone the repository">
+    Clone the Canvas MCP repository to your machine:
 
-### Step 2: Deploy your changes
+    ```bash
+    git clone https://github.com/ynbh/canvasmcp.git
+    cd canvasmcp
+    ```
+  </Step>
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+  <Step title="Sync dependencies">
+    Install all Python dependencies into a local virtual environment using `uv`:
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+    ```bash
+    uv sync
+    ```
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    `uv` reads `pyproject.toml` and resolves the full dependency tree. This usually takes under a minute.
+  </Step>
 
-### Step 3: Go live
+  <Step title="Verify your Canvas auth">
+    Run the live auth probe to confirm that Canvas MCP can find a valid Canvas session in Chrome:
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+    ```bash
+    uv run canvas auth-status
+    ```
 
-## Next steps
+    A successful response looks like:
 
-Now that you have your docs running, explore these key features:
+    ```json
+    {
+      "auth_mode": "chrome-session",
+      "auth_verified": true,
+      "auth_status": "verified",
+      "resolved_canvas_base_url": "https://school.instructure.com",
+      "detected_canvas_domains": ["school.instructure.com"],
+      "probe_status": 200,
+      "error": null
+    }
+    ```
+
+    <Note>
+      On macOS, Chrome protects its cookie database with the Keychain. When this command runs for the first time, macOS will show a prompt asking whether to allow access. Click **Allow** or **Always Allow**.
+    </Note>
+
+    If the command reports that no Canvas domain was detected, set `CANVAS_BASE_URL` explicitly:
+
+    ```bash
+    CANVAS_BASE_URL=https://school.instructure.com uv run canvas auth-status
+    ```
+  </Step>
+
+  <Step title="List your courses">
+    Fetch your Canvas courses from the terminal to confirm the full data path works:
+
+    ```bash
+    uv run canvas courses
+    ```
+
+    You should see a formatted list of the courses your Canvas account has access to.
+
+    <Tip>
+      You can also inspect a specific course by its ID:
+
+      ```bash
+      uv run canvas course overview 12345
+      uv run canvas course context 12345
+      ```
+    </Tip>
+  </Step>
+
+  <Step title="Connect an MCP client">
+    To expose Canvas data to an AI agent or MCP-compatible client (such as Claude Desktop), add the following to your client's MCP server configuration. Replace `/absolute/path/to/canvasmcp` with the actual path where you cloned the repository.
+
+    ```json
+    {
+      "mcpServers": {
+        "canvasmcp": {
+          "command": "/absolute/path/to/canvasmcp/scripts/start_mcp_server.sh"
+        }
+      }
+    }
+    ```
+
+    The helper script runs `uv run canvas-mcp` with stdio transport, which is the default expected by desktop MCP clients. Restart your MCP client after saving the configuration.
+  </Step>
+</Steps>
+
+## What's next
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Installation options" icon="download" href="/installation">
+    Install the `canvas` command globally with `uv tool install` so you can run it anywhere.
+  </Card>
+  <Card title="Auth overview" icon="lock" href="/auth/overview">
+    Understand Chrome cookie auth, domain detection, and profile selection in detail.
+  </Card>
+  <Card title="MCP transports" icon="arrows-left-right" href="/mcp/transports">
+    Run the server over HTTP or SSE instead of stdio for networked agents.
+  </Card>
+  <Card title="CLI reference" icon="rectangle-terminal" href="/cli/overview">
+    See all available CLI commands for assignments, discussions, files, and more.
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

@@ -1,0 +1,270 @@
+---
+title: "list_course_files, download_course_file, list_course_folders"
+description: "Canvas MCP file tools: list files with search and sort options, browse folder hierarchy, and download files to local temp storage."
+---
+
+The file tools let you explore and retrieve files attached to a Canvas course. Use `list_course_folders` to map the folder structure, `list_course_files` to list files (optionally filtered to a specific folder), and `download_course_file` to save a file to your local machine.
+
+---
+
+## `list_course_folders`
+
+Lists all folders in a course. Each folder object includes its ID, full path, parent folder ID, and counts of the files and subfolders it contains. Use the folder `id` returned here to filter `list_course_files` to a specific folder.
+
+### Parameters
+
+<ParamField path="course_id" type="string" required>
+  The Canvas course ID.
+</ParamField>
+
+<ParamField path="limit" type="integer" default="150">
+  Maximum number of folders to return. Accepted range: 1–300.
+</ParamField>
+
+### Return value
+
+<ResponseField name="course_id" type="string">
+  The course ID as provided.
+</ResponseField>
+
+<ResponseField name="count" type="integer">
+  Number of folders returned.
+</ResponseField>
+
+<ResponseField name="folders" type="array">
+  <Expandable title="Folder object fields">
+    <ResponseField name="id" type="string">
+      Folder ID. Pass this as `folder_id` in `list_course_files` to filter to this folder.
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Folder display name. Falls back to `"Untitled folder"` when absent.
+    </ResponseField>
+    <ResponseField name="full_name" type="string">
+      Full slash-separated path from the course root, e.g. `"course files/Week 1/Slides"`.
+    </ResponseField>
+    <ResponseField name="parent_folder_id" type="string">
+      ID of the parent folder. `null` for the root folder.
+    </ResponseField>
+    <ResponseField name="files_count" type="integer">
+      Number of files directly inside this folder.
+    </ResponseField>
+    <ResponseField name="folders_count" type="integer">
+      Number of subfolders directly inside this folder.
+    </ResponseField>
+    <ResponseField name="updated_at" type="string">
+      ISO 8601 timestamp of the most recent update.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Examples
+
+```bash
+# List all folders in course 12345
+canvas tool run list_course_folders --args '{"course_id": "12345"}'
+
+# Limit to top 20 folders
+canvas tool run list_course_folders --args '{"course_id": "12345", "limit": 20}'
+```
+
+---
+
+## `list_course_files`
+
+Lists files in a course. Results can be narrowed by a search string and optionally sorted. Each file in the response includes a `folder_id` field you can use to correlate files with folders from `list_course_folders`.
+
+### Parameters
+
+<ParamField path="course_id" type="string" required>
+  The Canvas course ID.
+</ParamField>
+
+<ParamField path="search" type="string">
+  Substring filter matched against file names. Case-insensitive.
+</ParamField>
+
+<ParamField path="sort" type="string">
+  Field to sort results by. Accepted values: `name`, `size`, `created_at`, `updated_at`, `content_type`, `user`.
+</ParamField>
+
+<ParamField path="order" type="string">
+  Sort direction. Accepted values: `asc`, `desc`.
+</ParamField>
+
+<ParamField path="limit" type="integer" default="100">
+  Maximum number of files to return. Accepted range: 1–300.
+</ParamField>
+
+### Return value
+
+<ResponseField name="course_id" type="string">
+  The course ID as provided.
+</ResponseField>
+
+<ResponseField name="count" type="integer">
+  Number of files returned.
+</ResponseField>
+
+<ResponseField name="files" type="array">
+  <Expandable title="File object fields">
+    <ResponseField name="id" type="string">
+      File ID. Pass this as `file_id` to `download_course_file`.
+    </ResponseField>
+    <ResponseField name="display_name" type="string">
+      Human-readable file name shown in Canvas.
+    </ResponseField>
+    <ResponseField name="filename" type="string">
+      Original file name as uploaded.
+    </ResponseField>
+    <ResponseField name="content_type" type="string">
+      MIME type, e.g. `"application/pdf"` or `"image/png"`.
+    </ResponseField>
+    <ResponseField name="size" type="integer">
+      File size in bytes.
+    </ResponseField>
+    <ResponseField name="updated_at" type="string">
+      ISO 8601 timestamp of the most recent update.
+    </ResponseField>
+    <ResponseField name="url" type="string">
+      Temporary Canvas download URL for direct access.
+    </ResponseField>
+    <ResponseField name="folder_id" type="string">
+      ID of the folder that contains this file.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Examples
+
+```bash
+# List all files in course 12345
+canvas tool run list_course_files --args '{"course_id": "12345"}'
+
+# Search for PDF files
+canvas tool run list_course_files --args '{"course_id": "12345", "search": ".pdf"}'
+
+# Sort by size, largest first
+canvas tool run list_course_files --args '{"course_id": "12345", "sort": "size", "order": "desc"}'
+```
+
+### Browsing files by folder
+
+`list_course_files` does not accept a `folder_id` parameter — it returns files across the entire course. To find files in a specific folder, first call `list_course_folders` to list all folders and their IDs, then cross-reference the `folder_id` field on each file in the `list_course_files` response.
+
+<Steps>
+  <Step title="List folders to find the folder ID">
+    ```bash
+    canvas tool run list_course_folders --args '{"course_id": "12345"}'
+    ```
+
+    Each folder has an `id` field. Note the ID of the folder you want.
+  </Step>
+  <Step title="List files and filter by folder_id in results">
+    ```bash
+    canvas tool run list_course_files --args '{"course_id": "12345", "limit": 300}'
+    ```
+
+    Filter the returned `files` array to entries where `folder_id` matches the target folder ID.
+  </Step>
+</Steps>
+
+---
+
+## `download_course_file`
+
+Downloads a course file and saves it to local temp storage. Returns the local file path so the calling agent or CLI command can read or process the file. If the file was already downloaded in a previous call, the cached copy is returned immediately without re-downloading unless `force_refresh` is set.
+
+### Parameters
+
+<ParamField path="course_id" type="string" required>
+  The Canvas course ID.
+</ParamField>
+
+<ParamField path="file_id" type="string" required>
+  The Canvas file ID. Obtain this from `list_course_files`.
+</ParamField>
+
+<ParamField path="force_refresh" type="boolean" default="false">
+  When `true`, the existing cached file is deleted before downloading a fresh copy.
+</ParamField>
+
+### Local temp storage
+
+Downloaded files are written to a temp directory managed by Canvas MCP. The exact path is returned in the `local_path` field of the response. The path format follows the pattern:
+
+```
+<temp_dir>/canvasmcp/<course_id>/<file_id>_<display_name>
+```
+
+The directory is created automatically on first download. Files persist across calls until `force_refresh` is used or the temp directory is cleared manually.
+
+<Tip>
+  Read the `local_path` from the response to locate the file. The path is an absolute path on the machine running the MCP server.
+</Tip>
+
+### Return value
+
+<ResponseField name="course_id" type="string">
+  The course ID as provided.
+</ResponseField>
+
+<ResponseField name="file_id" type="string">
+  The file ID as provided.
+</ResponseField>
+
+<ResponseField name="display_name" type="string">
+  The display name of the downloaded file.
+</ResponseField>
+
+<ResponseField name="local_path" type="string">
+  Absolute path to the downloaded file on the local filesystem. Use this path to open, read, or further process the file.
+</ResponseField>
+
+<ResponseField name="size_bytes" type="integer">
+  Size of the file on disk in bytes.
+</ResponseField>
+
+<ResponseField name="content_type" type="string">
+  MIME type of the file.
+</ResponseField>
+
+<ResponseField name="already_present" type="boolean">
+  `true` when the file was already cached and no network request was made. `false` when the file was freshly downloaded.
+</ResponseField>
+
+### Examples
+
+```bash
+# Download file 55555 from course 12345
+canvas tool run download_course_file --args '{"course_id": "12345", "file_id": "55555"}'
+
+# Force a fresh download even if cached
+canvas tool run download_course_file --args '{"course_id": "12345", "file_id": "55555", "force_refresh": true}'
+```
+
+Example response:
+
+```json
+{
+  "course_id": "12345",
+  "file_id": "55555",
+  "display_name": "Lecture 1 Slides.pdf",
+  "local_path": "/tmp/canvasmcp/12345/55555_Lecture 1 Slides.pdf",
+  "size_bytes": 2048000,
+  "content_type": "application/pdf",
+  "already_present": false
+}
+```
+
+---
+
+## Related tools
+
+<CardGroup cols={2}>
+  <Card title="Course tools" icon="book" href="/tools/courses">
+    Browse course metadata, syllabus, and enrollment.
+  </Card>
+  <Card title="Pages and modules" icon="layer-group" href="/tools/pages-modules">
+    Navigate course pages, tabs, and module content.
+  </Card>
+</CardGroup>

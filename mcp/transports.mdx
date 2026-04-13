@@ -1,0 +1,107 @@
+---
+title: 'Canvas MCP Transports: stdio, HTTP, and SSE'
+description: 'Configure Canvas MCP to run over stdio for desktop clients, streamable HTTP for production deployments, or SSE for legacy MCP clients.'
+keywords: ['canvas mcp', 'transport', 'stdio', 'http', 'sse', 'fastmcp', 'mcp server']
+---
+
+Canvas MCP supports three transports through the same `canvas-mcp` entry point. The transport you choose depends on where your MCP client runs — locally on the same machine, on a remote host, or in a legacy environment that only speaks SSE.
+
+## Choosing a transport
+
+| Transport | Best for |
+|---|---|
+| `stdio` (default) | Desktop clients on the same machine (Claude Desktop, Cursor) |
+| `http` / `streamable-http` | Networked or production deployments; recommended by FastMCP v3 |
+| `sse` | Legacy clients that require Server-Sent Events |
+
+## stdio
+
+`stdio` is the default transport and requires no additional flags. The MCP client launches `canvas-mcp` as a subprocess and communicates over its standard input/output streams.
+
+```bash
+uv run canvas-mcp
+```
+
+<Note>
+Desktop clients like Claude Desktop and Cursor always use stdio. They manage the subprocess lifecycle themselves — you do not need to keep a server running in the background.
+</Note>
+
+## HTTP (streamable-http)
+
+`http` and `streamable-http` are aliases for the same FastMCP transport. The server binds to a host and port and exposes the MCP endpoint at `/mcp` by default. Use this transport when your client is on a different machine or when you want a persistent server process.
+
+```bash
+uv run canvas-mcp --transport http --host 127.0.0.1 --port 8000
+```
+
+The MCP endpoint is then reachable at `http://127.0.0.1:8000/mcp`.
+
+You can also use the helper script, which loads `.env` automatically:
+
+```bash
+./scripts/start_mcp_server.sh --transport http --host 127.0.0.1 --port 8000
+```
+
+<Tip>
+FastMCP v3 recommends `http` over `sse` for all new networked deployments. Use `sse` only if your client does not support streamable HTTP.
+</Tip>
+
+## SSE
+
+`sse` provides legacy Server-Sent Events support for older MCP clients. It accepts the same `--host` and `--port` flags as HTTP.
+
+```bash
+uv run canvas-mcp --transport sse --host 127.0.0.1 --port 8000
+```
+
+<Warning>
+SSE support is provided for backwards compatibility. Prefer `http` for any new integration.
+</Warning>
+
+## CLI flags
+
+<ParamField path="--transport" type="string" default="stdio">
+  Transport to expose. Accepted values: `stdio`, `http`, `streamable-http`, `sse`. `http` and `streamable-http` are equivalent.
+</ParamField>
+
+<ParamField path="--host" type="string">
+  Network interface for HTTP-based transports. Ignored when `--transport stdio` is used. Example: `127.0.0.1` to bind loopback only, `0.0.0.0` to bind all interfaces.
+</ParamField>
+
+<ParamField path="--port" type="number">
+  Port number for HTTP-based transports. Ignored when `--transport stdio` is used.
+</ParamField>
+
+<ParamField path="--path" type="string">
+  Custom MCP endpoint path for HTTP-based transports. Defaults to `/mcp` when using the `http` transport.
+</ParamField>
+
+<ParamField path="--no-banner" type="boolean">
+  Disable the FastMCP startup banner. Useful in environments where clean stdout is required.
+</ParamField>
+
+## Example invocations
+
+<CodeGroup>
+
+```bash stdio (default)
+uv run canvas-mcp
+```
+
+```bash HTTP via uv
+uv run canvas-mcp --transport http --host 127.0.0.1 --port 8000
+```
+
+```bash HTTP via helper script
+./scripts/start_mcp_server.sh --transport http --host 127.0.0.1 --port 8000
+```
+
+```bash SSE
+uv run canvas-mcp --transport sse --host 127.0.0.1 --port 8000
+```
+
+```bash Custom path, no banner
+uv run canvas-mcp --transport http --host 0.0.0.0 --port 9000 --path /canvas/mcp --no-banner
+```
+
+</CodeGroup>

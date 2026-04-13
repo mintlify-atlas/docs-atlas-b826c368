@@ -1,0 +1,93 @@
+{
+  "projectType": "cli-tool",
+  "projectName": "Canvas MCP",
+  "projectDescription": "A FastMCP server and CLI that exposes Canvas LMS data and workflows to AI agents and terminal users via the Model Context Protocol.",
+  "theme": "luma",
+  "primaryColor": "#e12c25",
+  "lightColor": "#ec9c8c",
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": ["introduction", "quickstart", "installation"]
+          },
+          {
+            "group": "Authentication",
+            "pages": ["auth/overview", "auth/chrome-cookies", "auth/profiles", "auth/environment"]
+          },
+          {
+            "group": "CLI Reference",
+            "pages": ["cli/overview", "cli/courses", "cli/assignments", "cli/discussions", "cli/files", "cli/settings"]
+          },
+          {
+            "group": "MCP Server",
+            "pages": ["mcp/overview", "mcp/transports", "mcp/client-setup"]
+          }
+        ]
+      },
+      {
+        "tab": "Tool Reference",
+        "groups": [
+          {
+            "group": "Core Tools",
+            "pages": ["tools/core", "tools/courses", "tools/assignments"]
+          },
+          {
+            "group": "Content Tools",
+            "pages": ["tools/discussions", "tools/files", "tools/pages-modules"]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Chrome-based cookie authentication with automatic session refresh",
+    "FastMCP server supporting stdio, HTTP, and SSE transports",
+    "26 Canvas LMS tools covering courses, assignments, discussions, files, and grades",
+    "CLI with course, assignment, discussion, file, and settings subcommands",
+    "Fuzzy course resolution and Canvas URL routing",
+    "Aggregated course context snapshot for AI agent orientation"
+  ],
+  "publicApiSurface": [
+    "get_today()",
+    "list_courses(favorites_only, search, limit)",
+    "resolve_course(query, favorites_only, limit)",
+    "get_course_overview(course_id)",
+    "get_course_syllabus(course_id, include_body, body_char_limit)",
+    "list_course_assignments(course_id, bucket, search, include_submission, limit)",
+    "get_assignment_details(course_id, assignment_id, include_submission)",
+    "list_assignment_groups(course_id, include_assignments)",
+    "list_course_submissions(course_id, student_id, workflow_state, limit)",
+    "get_course_grade_summary(course_id, student_id)",
+    "list_course_pages(course_id, search, published_only, limit)",
+    "canvas_get_page(course_id, url_or_id, force_as_id)",
+    "list_course_tabs(course_id, limit)",
+    "get_course_tab(course_id, tab_id, include_target)",
+    "list_discussion_topics(course_id, search, exact_title, limit)",
+    "get_discussion_entries(course_id, topic_id, limit)",
+    "list_course_files(course_id, search, folder_id, limit)",
+    "download_course_file(course_id, file_id)",
+    "list_course_folders(course_id, limit)",
+    "list_modules(course_id, search, include_items, include_content_details, limit)",
+    "list_announcements(course_ids, start_date, end_date, limit)",
+    "list_calendar_events(course_ids, start_date, end_date, limit)",
+    "list_course_people(course_id, search, enrollment_types, include_email, limit)",
+    "resolve_canvas_url(url, fetch_details)",
+    "get_course_context_snapshot(course_id, include_syllabus_body, upcoming_limit)",
+    "canvas courses",
+    "canvas course overview <course_id>",
+    "canvas course context <course_id>",
+    "canvas assignments list <course_id>",
+    "canvas discussion show <course_id> <topic_id>",
+    "canvas auth-status",
+    "canvas settings profiles",
+    "canvas settings choose-profile",
+    "canvas tool list",
+    "canvas tool run <tool_name> --args <json>",
+    "canvas-mcp --transport <stdio|http|sse>"
+  ]
+}

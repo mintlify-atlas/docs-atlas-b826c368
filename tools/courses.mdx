@@ -1,0 +1,511 @@
+---
+title: 'Course Tools: Overview, Syllabus, Pages & More'
+description: 'Reference for all Canvas MCP course tools: fetch metadata, syllabi, wiki pages, navigation tabs, modules, grades, enrolled people, and URL resolution.'
+keywords: ['canvas mcp', 'course overview', 'syllabus', 'modules', 'course grades', 'wiki pages', 'course tabs', 'resolve canvas url']
+---
+
+The course tools expose everything about a single Canvas course: metadata, syllabus, wiki pages, navigation tabs, enrolled users, modules, grades, and a one-call context snapshot. Most tools require only a `course_id`, which you can obtain from `list_courses` or `resolve_course`.
+
+---
+
+## get_course_overview
+
+Returns course-level metadata along with the list of teachers. This is typically the first call when you need basic facts about a course — term, dates, student count, and instructor info.
+
+### Parameters
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+### Response
+
+<ResponseField name="course" type="object" required>
+  <Expandable title="Course object fields">
+    <ResponseField name="id" type="string">Canvas course ID.</ResponseField>
+    <ResponseField name="name" type="string">Full course name.</ResponseField>
+    <ResponseField name="course_code" type="string">Short course code.</ResponseField>
+    <ResponseField name="workflow_state" type="string">Course state, e.g. `"available"`.</ResponseField>
+    <ResponseField name="term" type="object">Enrollment term object with `id` and `name`.</ResponseField>
+    <ResponseField name="start_at" type="string">ISO datetime the course starts.</ResponseField>
+    <ResponseField name="end_at" type="string">ISO datetime the course ends.</ResponseField>
+    <ResponseField name="time_zone" type="string">Course time zone identifier.</ResponseField>
+    <ResponseField name="default_view" type="string">Default course home view, e.g. `"feed"` or `"wiki"`.</ResponseField>
+    <ResponseField name="public_syllabus" type="boolean">Whether the syllabus is publicly visible.</ResponseField>
+    <ResponseField name="is_favorite" type="boolean">Whether the course is starred by the current user.</ResponseField>
+    <ResponseField name="total_students" type="integer">Total enrolled student count.</ResponseField>
+    <ResponseField name="hide_final_grades" type="boolean">Whether final grades are hidden from students.</ResponseField>
+    <ResponseField name="html_url" type="string">Direct URL to the course in Canvas.</ResponseField>
+    <ResponseField name="teachers" type="object[]">
+      Array of teacher objects, each containing `id`, `display_name`, `sortable_name`, `avatar_image_url`, and `html_url`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```bash
+canvas tool run get_course_overview --args '{"course_id": "112233"}'
+```
+
+---
+
+## get_course_syllabus
+
+Returns syllabus metadata and optionally the full syllabus body. The body is HTML and can be large; use `body_char_limit` to truncate it when you only need a summary.
+
+### Parameters
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<Expandable title="Optional parameters">
+  <ParamField path="include_body" type="boolean" default="true">
+    When `true`, includes the raw HTML syllabus body. Defaults to `true`.
+  </ParamField>
+
+  <ParamField path="body_char_limit" type="integer" default="12000">
+    Maximum number of characters to return from the syllabus body. Must be between `200` and `200000`. Defaults to `12000`.
+  </ParamField>
+</Expandable>
+
+### Response
+
+<ResponseField name="course_id" type="string" required>Canvas course ID.</ResponseField>
+<ResponseField name="course_name" type="string" required>Full course name.</ResponseField>
+<ResponseField name="course_code" type="string">Short course code.</ResponseField>
+<ResponseField name="term" type="object">Enrollment term object.</ResponseField>
+<ResponseField name="syllabus_body" type="string">
+  The syllabus body as raw HTML, truncated to `body_char_limit` if needed. `null` when `include_body` is `false` or no syllabus exists.
+</ResponseField>
+<ResponseField name="has_syllabus_body" type="boolean" required>
+  `true` if a syllabus body exists in Canvas, regardless of `include_body`.
+</ResponseField>
+<ResponseField name="syllabus_public" type="boolean">Whether the syllabus is publicly accessible.</ResponseField>
+<ResponseField name="syllabus_raw_length" type="integer">Full character length of the syllabus body before any truncation.</ResponseField>
+<ResponseField name="html_url" type="string">Direct URL to the course in Canvas.</ResponseField>
+
+### Example
+
+```bash
+canvas tool run get_course_syllabus --args '{"course_id": "112233", "include_body": true, "body_char_limit": 5000}'
+```
+
+---
+
+## list_course_pages
+
+Lists wiki pages in a course. Results can be filtered by search term and publication status.
+
+### Parameters
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<Expandable title="Optional parameters">
+  <ParamField path="search" type="string">
+    Filter pages by title. Case-insensitive substring match.
+  </ParamField>
+
+  <ParamField path="published_only" type="boolean">
+    When `true`, returns only published pages. When `false`, returns only unpublished pages. When omitted, returns all pages.
+  </ParamField>
+
+  <ParamField path="limit" type="integer">
+    Maximum number of pages to return. Must be between `1` and `300`. Defaults to `100`.
+  </ParamField>
+</Expandable>
+
+### Response
+
+<ResponseField name="course_id" type="string" required>Canvas course ID.</ResponseField>
+<ResponseField name="count" type="integer" required>Number of pages returned.</ResponseField>
+<ResponseField name="pages" type="object[]" required>
+  <Expandable title="Page object fields">
+    <ResponseField name="page_id" type="string">Canvas page ID.</ResponseField>
+    <ResponseField name="url" type="string">URL slug used to fetch the page, e.g. `"course-syllabus"`.</ResponseField>
+    <ResponseField name="title" type="string">Page title.</ResponseField>
+    <ResponseField name="created_at" type="string">ISO datetime the page was created.</ResponseField>
+    <ResponseField name="updated_at" type="string">ISO datetime of the last edit.</ResponseField>
+    <ResponseField name="published" type="boolean">Whether the page is published.</ResponseField>
+    <ResponseField name="front_page" type="boolean">Whether this is the course front page.</ResponseField>
+    <ResponseField name="html_url" type="string">Direct URL to the page in Canvas.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```bash
+canvas tool run list_course_pages --args '{"course_id": "112233", "published_only": true, "limit": 25}'
+```
+
+---
+
+## canvas_get_page
+
+Fetches the full content of a single course wiki page by URL slug or page ID. Pass the `url` slug (e.g. `"week-3-notes"`) or a numeric page ID. This tool does **not** support assignment, discussion, or file URLs — use `resolve_canvas_url` for those.
+
+### Parameters
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<ParamField path="url_or_id" type="string" required>
+  The page URL slug (e.g. `"course-syllabus"`) or numeric page ID. Also accepts a full Canvas page URL — the slug is extracted automatically.
+</ParamField>
+
+<Expandable title="Optional parameters">
+  <ParamField path="force_as_id" type="boolean" default="false">
+    When `true`, treats `url_or_id` as a numeric page ID even if it looks like a slug. Defaults to `false`.
+  </ParamField>
+</Expandable>
+
+### Response
+
+<ResponseField name="course_id" type="string" required>Canvas course ID.</ResponseField>
+<ResponseField name="requested" type="object" required>Echo of the `url_or_id` and `force_as_id` values that were used.</ResponseField>
+<ResponseField name="page" type="object" required>
+  <Expandable title="Page object fields">
+    <ResponseField name="page_id" type="string">Canvas page ID.</ResponseField>
+    <ResponseField name="url" type="string">URL slug.</ResponseField>
+    <ResponseField name="title" type="string">Page title.</ResponseField>
+    <ResponseField name="created_at" type="string">ISO datetime the page was created.</ResponseField>
+    <ResponseField name="updated_at" type="string">ISO datetime of the last edit.</ResponseField>
+    <ResponseField name="published" type="boolean">Whether the page is published.</ResponseField>
+    <ResponseField name="front_page" type="boolean">Whether this is the course front page.</ResponseField>
+    <ResponseField name="body" type="string">Full page content as raw HTML.</ResponseField>
+    <ResponseField name="html_url" type="string">Direct URL to the page in Canvas.</ResponseField>
+    <ResponseField name="lock_info" type="object">Lock details if the page is locked.</ResponseField>
+    <ResponseField name="locked_for_user" type="boolean">Whether the page is locked for the current user.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```bash
+canvas tool run canvas_get_page --args '{"course_id": "112233", "url_or_id": "week-3-lecture-notes"}'
+```
+
+---
+
+## list_course_tabs
+
+Lists the left-sidebar navigation tabs visible in a course. Tabs represent entries like Home, Syllabus, Assignments, People, and any external tool links.
+
+### Parameters
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<Expandable title="Optional parameters">
+  <ParamField path="limit" type="integer">
+    Maximum number of tabs to return. Must be between `1` and `300`. Defaults to `100`.
+  </ParamField>
+</Expandable>
+
+### Response
+
+<ResponseField name="course_id" type="string" required>Canvas course ID.</ResponseField>
+<ResponseField name="count" type="integer" required>Number of tabs returned.</ResponseField>
+<ResponseField name="tabs" type="object[]" required>
+  <Expandable title="Tab object fields">
+    <ResponseField name="id" type="string">Tab identifier, e.g. `"home"`, `"syllabus"`, `"assignments"`.</ResponseField>
+    <ResponseField name="label" type="string">Display label shown in the sidebar.</ResponseField>
+    <ResponseField name="type" type="string">Tab type, e.g. `"internal"` or `"external"`.</ResponseField>
+    <ResponseField name="position" type="integer">Ordered position in the sidebar.</ResponseField>
+    <ResponseField name="hidden" type="boolean">Whether the tab is hidden from students.</ResponseField>
+    <ResponseField name="visibility" type="string">Visibility level, e.g. `"public"` or `"members"`.</ResponseField>
+    <ResponseField name="url" type="string">Relative URL path for the tab.</ResponseField>
+    <ResponseField name="full_url" type="string">Absolute URL for the tab destination.</ResponseField>
+    <ResponseField name="html_url" type="string">Canonical Canvas URL for the tab.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```bash
+canvas tool run list_course_tabs --args '{"course_id": "112233"}'
+```
+
+---
+
+## get_course_tab
+
+Fetches a single navigation tab by its tab ID and optionally resolves and fetches the tab's destination. Use this to follow a sidebar link through to its content.
+
+### Parameters
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<ParamField path="tab_id" type="string" required>
+  The tab identifier, e.g. `"home"`, `"syllabus"`, `"assignments"`. Obtain tab IDs from `list_course_tabs`.
+</ParamField>
+
+<Expandable title="Optional parameters">
+  <ParamField path="include_target" type="boolean" default="true">
+    When `true`, resolves the tab's destination URL and fetches its content using `resolve_canvas_url`. Defaults to `true`.
+  </ParamField>
+</Expandable>
+
+### Response
+
+<ResponseField name="course_id" type="string" required>Canvas course ID.</ResponseField>
+<ResponseField name="tab_id" type="string" required>The tab identifier that was queried.</ResponseField>
+<ResponseField name="tab" type="object" required>Tab object with the same fields as `list_course_tabs` entries.</ResponseField>
+<ResponseField name="target" type="object">
+  When `include_target` is `true`, the resolved content at the tab's destination URL. Shape depends on the destination resource type (same structure as `resolve_canvas_url` response).
+</ResponseField>
+
+### Example
+
+```bash
+canvas tool run get_course_tab --args '{"course_id": "112233", "tab_id": "syllabus", "include_target": true}'
+```
+
+---
+
+## list_course_people
+
+Lists users enrolled in a course. Can be filtered by name, enrollment type, and whether to include email addresses.
+
+### Parameters
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<Expandable title="Optional parameters">
+  <ParamField path="search" type="string">
+    Filter users by name. Case-insensitive substring match.
+  </ParamField>
+
+  <ParamField path="enrollment_types" type="string[]">
+    Filter by one or more enrollment types. Allowed values: `"teacher"`, `"student"`, `"student_view"`, `"ta"`, `"observer"`, `"designer"`.
+  </ParamField>
+
+  <ParamField path="include_email" type="boolean" default="true">
+    When `true`, includes the user's email address in the response. Defaults to `true`.
+  </ParamField>
+
+  <ParamField path="limit" type="integer">
+    Maximum number of users to return. Must be between `1` and `300`. Defaults to `100`.
+  </ParamField>
+</Expandable>
+
+### Response
+
+<ResponseField name="course_id" type="string" required>Canvas course ID.</ResponseField>
+<ResponseField name="count" type="integer" required>Number of users returned.</ResponseField>
+<ResponseField name="people" type="object[]" required>
+  <Expandable title="Person object fields">
+    <ResponseField name="id" type="string">Canvas user ID.</ResponseField>
+    <ResponseField name="name" type="string">Full display name.</ResponseField>
+    <ResponseField name="sortable_name" type="string">Last, First format used for sorting.</ResponseField>
+    <ResponseField name="short_name" type="string">Preferred short name.</ResponseField>
+    <ResponseField name="email" type="string">User email address. Present when `include_email` is `true`.</ResponseField>
+    <ResponseField name="avatar_url" type="string">URL to the user's avatar image.</ResponseField>
+    <ResponseField name="enrollments" type="object[]">
+      Array of enrollment objects, each with `type`, `role`, and `enrollment_state`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```bash
+canvas tool run list_course_people --args '{"course_id": "112233", "enrollment_types": ["teacher", "ta"], "include_email": true}'
+```
+
+---
+
+## list_modules
+
+Lists modules in a course and optionally expands each module's items and their content details.
+
+### Parameters
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<Expandable title="Optional parameters">
+  <ParamField path="search" type="string">
+    Filter modules by name. Case-insensitive substring match.
+  </ParamField>
+
+  <ParamField path="include_items" type="boolean">
+    When `true`, includes the list of items within each module.
+  </ParamField>
+
+  <ParamField path="include_content_details" type="boolean">
+    When `true`, fetches additional details for each module item (requires `include_items` to be `true`).
+  </ParamField>
+
+  <ParamField path="limit" type="integer">
+    Maximum number of modules to return. Must be between `1` and `300`. Defaults to `100`.
+  </ParamField>
+
+  <ParamField path="items_limit" type="integer">
+    Maximum number of items to return per module. Must be between `1` and `300`. Defaults to `100`.
+  </ParamField>
+</Expandable>
+
+### Example
+
+```bash
+canvas tool run list_modules --args '{"course_id": "112233", "include_items": true, "include_content_details": true, "limit": 10}'
+```
+
+---
+
+## get_course_grade_summary
+
+Returns the current grade summary for a student in a course, including enrollment grade data, raw point totals, submission counts, and a per-assignment-group breakdown.
+
+### Parameters
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<Expandable title="Optional parameters">
+  <ParamField path="student_id" type="string" default="self">
+    Canvas user ID of the student. Defaults to `"self"` (the authenticated user). Querying other students requires course-level submission read permissions.
+  </ParamField>
+</Expandable>
+
+### Response
+
+<ResponseField name="course_id" type="string" required>Canvas course ID.</ResponseField>
+<ResponseField name="course_name" type="string" required>Full course name.</ResponseField>
+<ResponseField name="student_id" type="string" required>The student ID that was queried.</ResponseField>
+<ResponseField name="grades" type="object">
+  Canvas enrollment grades object. Contains `current_score`, `final_score`, `current_grade`, and `final_grade` when available.
+</ResponseField>
+<ResponseField name="raw_points" type="object">
+  <Expandable title="Raw points fields">
+    <ResponseField name="earned" type="number">Total points earned across all graded submissions.</ResponseField>
+    <ResponseField name="possible" type="number">Total points possible across all assignments.</ResponseField>
+    <ResponseField name="percent" type="number">Calculated percentage (`earned / possible * 100`). `null` when no points are possible.</ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="submission_counts" type="object">
+  <Expandable title="Submission count fields">
+    <ResponseField name="total" type="integer">Total number of submissions fetched.</ResponseField>
+    <ResponseField name="missing" type="integer">Count of missing submissions.</ResponseField>
+    <ResponseField name="late" type="integer">Count of late submissions.</ResponseField>
+    <ResponseField name="excused" type="integer">Count of excused submissions.</ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="assignment_group_breakdown" type="object[]">
+  Per-group grade data, each with `id`, `name`, `group_weight`, `earned_points`, `possible_points`, `percent`, and `weighted_contribution_estimate`.
+</ResponseField>
+
+### Example
+
+```bash
+canvas tool run get_course_grade_summary --args '{"course_id": "112233"}'
+```
+
+---
+
+## resolve_canvas_url
+
+Parses a Canvas URL into its component object identifiers and optionally fetches the identified resource. Use this when you have a Canvas URL and need to know what it points to and how to retrieve its content.
+
+<Note>
+  `canvas_get_page` only handles wiki page URLs. For all other Canvas URLs — assignments, discussions, files, submissions — use `resolve_canvas_url`.
+</Note>
+
+### Parameters
+
+<ParamField path="url" type="string" required>
+  A full Canvas URL, e.g. `"https://school.instructure.com/courses/112233/assignments/789"`.
+</ParamField>
+
+<Expandable title="Optional parameters">
+  <ParamField path="fetch_details" type="boolean" default="true">
+    When `true`, fetches the resource identified by the URL and includes it in the `details` field. Defaults to `true`.
+  </ParamField>
+</Expandable>
+
+### Response
+
+<ResponseField name="url" type="string" required>The original URL that was parsed.</ResponseField>
+<ResponseField name="domain" type="string" required>The hostname extracted from the URL.</ResponseField>
+<ResponseField name="course_id" type="string">Extracted Canvas course ID.</ResponseField>
+<ResponseField name="resource_type" type="string">
+  Type of resource identified. Common values: `"assignment"`, `"discussion_topic"`, `"page"`, `"file"`, `"syllabus"`, `"course_grades"`, `"course_people"`, `"course"`.
+</ResponseField>
+<ResponseField name="resource_id" type="string">Expanded Canvas resource ID.</ResponseField>
+<ResponseField name="resource_id_aliases" type="string[]">All known ID aliases for the resource (short, tilde, and full formats).</ResponseField>
+<ResponseField name="recommended_tool" type="string">The suggested tool name to use for this resource type.</ResponseField>
+<ResponseField name="details" type="object">
+  Fetched resource content when `fetch_details` is `true`. Shape matches the response from the recommended tool.
+</ResponseField>
+<ResponseField name="detail_error" type="string">Error message if the details fetch failed. `null` on success.</ResponseField>
+
+### Example
+
+```bash
+canvas tool run resolve_canvas_url --args '{"url": "https://school.instructure.com/courses/112233/assignments/789", "fetch_details": true}'
+```
+
+---
+
+## get_course_context_snapshot
+
+Returns an aggregated, single-call context snapshot for a course. Combines the course overview, syllabus, upcoming assignments, recent announcements, modules, and grade summary into one response. Designed to give an LLM or tool a quick orientation to a course without making multiple sequential requests.
+
+### Parameters
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<Expandable title="Optional parameters">
+  <ParamField path="include_syllabus_body" type="boolean" default="false">
+    When `true`, includes the full HTML syllabus body. Defaults to `false` to keep the response compact.
+  </ParamField>
+
+  <ParamField path="upcoming_limit" type="integer" default="20">
+    Maximum number of upcoming assignments to include. Must be between `1` and `300`. Defaults to `20`.
+  </ParamField>
+
+  <ParamField path="announcements_limit" type="integer" default="10">
+    Maximum number of recent announcements to include. Must be between `1` and `300`. Defaults to `10`.
+  </ParamField>
+
+  <ParamField path="modules_limit" type="integer" default="20">
+    Maximum number of modules to include. Must be between `1` and `300`. Defaults to `20`.
+  </ParamField>
+
+  <ParamField path="module_items_limit" type="integer" default="50">
+    Maximum number of items per module to include. Must be between `1` and `300`. Defaults to `50`.
+  </ParamField>
+</Expandable>
+
+### Response
+
+<ResponseField name="course_id" type="string" required>Canvas course ID.</ResponseField>
+<ResponseField name="overview" type="object">Result from `get_course_overview`.</ResponseField>
+<ResponseField name="syllabus" type="object">Result from `get_course_syllabus`.</ResponseField>
+<ResponseField name="upcoming_assignments" type="object">Result from `list_course_assignments` with `bucket: "upcoming"`.</ResponseField>
+<ResponseField name="announcements" type="object">Result from `list_announcements`.</ResponseField>
+<ResponseField name="modules" type="object">Result from `list_modules` with items and content details.</ResponseField>
+<ResponseField name="grade_summary" type="object">Result from `get_course_grade_summary`.</ResponseField>
+<ResponseField name="errors" type="object[]">
+  Array of section-level errors. Each entry has `section` (the snapshot key that failed) and `error` (the error message). Individual section failures do not abort the entire snapshot.
+</ResponseField>
+
+### Example
+
+```bash
+canvas tool run get_course_context_snapshot --args '{"course_id": "112233", "include_syllabus_body": false, "upcoming_limit": 10}'
+```

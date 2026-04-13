@@ -1,0 +1,147 @@
+---
+title: 'canvas assignments — list, show, and group assignment data'
+description: 'Reference for canvas assignments list, show, and groups: bucket filters, search, submission inclusion, and grading group breakdowns.'
+keywords: ['canvas', 'cli', 'assignments', 'bucket', 'upcoming', 'overdue', 'assignment groups']
+---
+
+The `canvas assignments` subcommand group gives you direct access to assignment data in a Canvas course. You can list assignments with flexible filters, fetch full details for a single assignment, and inspect grading groups. All output is printed as pretty-printed JSON.
+
+## `canvas assignments list`
+
+List assignments in a course.
+
+```bash
+canvas assignments list 12345
+canvas assignments list 12345 --bucket upcoming
+canvas assignments list 12345 --bucket overdue --include-submission
+canvas assignments list 12345 --search "midterm" --limit 10
+```
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<ParamField path="--search" type="string">
+  Filter assignments by name. Case-insensitive substring match.
+</ParamField>
+
+<ParamField path="--bucket" type="string">
+  Return only assignments in a specific time/state bucket. Canvas-supported values include:
+
+  - `upcoming` — not yet due
+  - `overdue` — past due and unsubmitted
+  - `past` — due date has passed
+  - `undated` — no due date set
+  - `ungraded` — submitted but not yet graded
+  - `unsubmitted` — not submitted
+
+  Omit the flag to return all assignments regardless of state.
+</ParamField>
+
+<ParamField path="--include-submission" type="boolean" default="false">
+  Attach the current user's submission data to each assignment where available.
+</ParamField>
+
+<ParamField path="--limit" type="number" default="100">
+  Maximum number of assignments to return.
+</ParamField>
+
+### Examples
+
+List only upcoming assignments:
+
+```bash
+canvas assignments list 12345 --bucket upcoming
+```
+
+Find assignments matching a search term and include your submission status:
+
+```bash
+canvas assignments list 12345 --search "essay" --include-submission
+```
+
+List past assignments, capped at 25:
+
+```bash
+canvas assignments list 12345 --bucket past --limit 25
+```
+
+---
+
+## `canvas assignments show`
+
+Fetch full details for a single assignment.
+
+```bash
+canvas assignments show 12345 67890
+canvas assignments show 12345 67890 --include-submission
+```
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<ParamField path="assignment_id" type="string" required>
+  Canvas assignment ID.
+</ParamField>
+
+<ParamField path="--include-submission" type="boolean" default="false">
+  Include the current user's submission for this assignment where available.
+</ParamField>
+
+### Examples
+
+Show assignment details without submission data:
+
+```bash
+canvas assignments show 12345 67890
+```
+
+Show assignment details and include your submission:
+
+```bash
+canvas assignments show 12345 67890 --include-submission
+```
+
+---
+
+## `canvas assignments groups`
+
+List assignment groups (grading categories) for a course. Assignment groups define how grades are weighted in Canvas.
+
+```bash
+canvas assignments groups 12345
+canvas assignments groups 12345 --assignments
+canvas assignments groups 12345 --assignments --include-submission
+canvas assignments groups 12345 --assignments --limit 20
+```
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<ParamField path="--assignments/--no-assignments" type="boolean" default="false">
+  Include the assignments nested within each group.
+</ParamField>
+
+<ParamField path="--include-submission" type="boolean" default="false">
+  Attach submission data to each assignment when `--assignments` is also set.
+</ParamField>
+
+<ParamField path="--limit" type="number" default="100">
+  Maximum number of assignment groups to return.
+</ParamField>
+
+### Examples
+
+List groups with their assignments and your submission status:
+
+```bash
+canvas assignments groups 12345 --assignments --include-submission
+```
+
+List groups only (no assignment details):
+
+```bash
+canvas assignments groups 12345
+```

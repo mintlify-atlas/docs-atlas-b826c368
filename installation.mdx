@@ -1,0 +1,139 @@
+---
+title: "Install Canvas MCP as a dev checkout or global tool"
+description: "Two ways to install Canvas MCP: a development checkout with uv sync, or a persistent global CLI using uv tool install, with both entrypoints explained."
+keywords: ["canvas mcp", "installation", "uv tool install", "uv sync", "canvas cli", "canvas-mcp"]
+---
+
+Canvas MCP ships two entrypoints defined in `pyproject.toml`: the `canvas` CLI for interactive terminal use, and the `canvas-mcp` server that MCP clients connect to. This page covers both installation paths and explains when to use each one.
+
+## Entrypoints
+
+The `pyproject.toml` scripts section declares both commands:
+
+```toml
+[project.scripts]
+canvas = "canvas_cli:main"
+canvas-mcp = "mcp_entry:main"
+```
+
+| Command | Purpose |
+|---|---|
+| `canvas` | Interactive CLI — list courses, check auth, manage settings |
+| `canvas-mcp` | MCP server entrypoint — used by AI clients and the helper script |
+
+---
+
+## Option 1: Development checkout
+
+Use this path when you want to modify the source code or run Canvas MCP from the repository directory.
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/ynbh/canvasmcp.git
+    cd canvasmcp
+    ```
+  </Step>
+
+  <Step title="Sync dependencies">
+    ```bash
+    uv sync
+    ```
+
+    This creates a `.venv` directory inside the repository and installs all runtime and dev dependencies declared in `pyproject.toml`.
+  </Step>
+
+  <Step title="Run commands with uv run">
+    Prefix every command with `uv run` to use the project's virtual environment:
+
+    ```bash
+    uv run canvas courses
+    uv run canvas auth-status
+    uv run canvas-mcp --transport http --host 127.0.0.1 --port 8000
+    ```
+  </Step>
+</Steps>
+
+---
+
+## Option 2: Global tool install
+
+Use this path when you want the `canvas` command available system-wide without prefixing `uv run`.
+
+<Steps>
+  <Step title="Install as a uv tool">
+    From inside the cloned repository directory:
+
+    ```bash
+    uv tool install .
+    ```
+
+    This installs both `canvas` and `canvas-mcp` into uv's tool bin directory and makes them available on your `PATH`.
+  </Step>
+
+  <Step title="Verify the install">
+    ```bash
+    canvas auth-status
+    ```
+
+    No `uv run` prefix needed.
+  </Step>
+
+  <Step title="Reinstall after local changes">
+    If you edit the source code and want those changes reflected in the global install, run:
+
+    ```bash
+    uv tool install . --reinstall
+    ```
+
+    <Tip>
+      You do not need to reinstall after changes when using the development checkout path — `uv run` always picks up the current source.
+    </Tip>
+  </Step>
+</Steps>
+
+---
+
+## Configuring your Canvas base URL
+
+By default, Canvas MCP infers your Canvas domain from Chrome cookies. If you have multiple Canvas domains in Chrome, or if auto-detection fails, set the `CANVAS_BASE_URL` environment variable:
+
+```bash
+export CANVAS_BASE_URL=https://school.instructure.com
+```
+
+You can also put this in a `.env` file in the repository root. The `scripts/start_mcp_server.sh` helper passes it to the server automatically via `--env-file .env`.
+
+<Warning>
+  If you have sessions for multiple Canvas institutions in Chrome and do not set `CANVAS_BASE_URL`, the CLI may pick the wrong domain. Set the variable explicitly in that case.
+</Warning>
+
+---
+
+## MCP client setup
+
+Once installed, point your MCP client at the helper script. Use the absolute path to the script:
+
+```json
+{
+  "mcpServers": {
+    "canvasmcp": {
+      "command": "/absolute/path/to/canvasmcp/scripts/start_mcp_server.sh"
+    }
+  }
+}
+```
+
+The script runs `uv run --env-file .env canvas-mcp` with stdio transport, which is the default expected by desktop MCP clients such as Claude Desktop.
+
+For HTTP transport instead:
+
+```bash
+uv run canvas-mcp --transport http --host 127.0.0.1 --port 8000
+```
+
+The MCP endpoint is then available at `http://127.0.0.1:8000/mcp`.
+
+<Note>
+  See [MCP transports](/mcp/transports) for a full comparison of stdio, HTTP, and SSE transport options.
+</Note>

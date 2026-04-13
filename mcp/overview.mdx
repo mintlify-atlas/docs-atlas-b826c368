@@ -1,0 +1,84 @@
+---
+title: 'Canvas MCP Server: Tools & Architecture'
+description: 'Learn how Canvas MCP exposes 26 Canvas LMS tools over the Model Context Protocol for use with AI assistants like Claude and Cursor.'
+keywords: ['canvas mcp', 'model context protocol', 'fastmcp', 'canvas lms', 'ai assistant', 'tools']
+---
+
+Canvas MCP is a [FastMCP](https://github.com/jlowin/fastmcp) server that makes your Canvas LMS data accessible to any AI assistant that speaks the Model Context Protocol. It exposes all 26 Canvas tools as MCP-callable functions, so clients like Claude Desktop and Cursor can list your courses, read assignments, fetch discussion threads, and more — without you writing a single line of glue code.
+
+## The `canvas-mcp` entry point
+
+When you install the project, `pyproject.toml` registers a `canvas-mcp` console script:
+
+```toml pyproject.toml
+[project.scripts]
+canvas-mcp = "mcp_entry:main"
+```
+
+Running `uv run canvas-mcp` starts the FastMCP server. By default it uses the `stdio` transport, which is what desktop MCP clients expect. You can switch transports with the `--transport` flag — see [Transports](/mcp/transports) for the full list.
+
+## How tools are registered
+
+The server uses dynamic registration rather than hand-written tool functions. At startup, `mcp/server.py` iterates over every entry in `TOOL_SPECS` — a registry of `ToolSpec` definitions that each carry a name, description, and JSON Schema parameter spec — and builds a real Python function for each one on the fly:
+
+```python mcp/server.py
+for tool_spec in TOOL_SPECS:
+    _register_tool(tool_spec)
+```
+
+Inside `_register_tool`, the server:
+
+1. Derives Python type annotations from the JSON Schema (`string` → `str`, `integer` → `int`, `boolean` → `bool`, `array` → `list[...]`).
+2. Constructs a proper `inspect.Signature` so FastMCP can generate accurate MCP tool schemas.
+3. Attaches the spec's description as `__doc__` and registers the function via `mcp.tool(...)`.
+
+Optional parameters are typed as `T | None` with a `None` default; required parameters carry no default and appear as mandatory in the MCP schema.
+
+## Available tools
+
+All 26 tools are registered automatically from `TOOL_SPECS`:
+
+| Tool | Description |
+|---|---|
+| `get_today` | Today's date in ISO format |
+| `list_courses` | List courses, with optional search and favorites filter |
+| `resolve_course` | Fuzzy-match a course by name |
+| `get_course_overview` | Course-level metadata and teacher info |
+| `get_course_syllabus` | Syllabus metadata and optional body |
+| `list_course_assignments` | List assignments with bucket filtering |
+| `get_assignment_details` | Full assignment details |
+| `list_course_pages` | List course wiki pages |
+| `list_course_tabs` | List left-sidebar navigation tabs |
+| `get_course_tab` | Fetch one tab and resolve its destination |
+| `canvas_get_page` | Get a specific wiki page by URL or ID |
+| `list_discussion_topics` | List discussions with title/search filters |
+| `get_discussion_entries` | Fetch thread entries and replies |
+| `list_course_files` | List files in a course |
+| `download_course_file` | Download a file to local temp storage |
+| `list_course_folders` | List folders |
+| `list_assignment_groups` | List grading groups and optional assignments |
+| `list_course_submissions` | List submissions for a student |
+| `get_course_grade_summary` | Grade summary with assignment-group breakdown |
+| `list_modules` | List modules with optional items |
+| `list_announcements` | List announcements across courses |
+| `list_calendar_events` | List calendar events |
+| `list_course_people` | List users enrolled in a course |
+| `resolve_canvas_url` | Parse a Canvas URL and optionally fetch details |
+| `get_course_context_snapshot` | Aggregated course context for quick orientation |
+
+## What MCP clients can do
+
+Any MCP-compatible AI assistant can connect to Canvas MCP and call these tools in natural language. Common workflows include:
+
+- Asking an assistant to summarize upcoming assignments across all your courses
+- Having Claude pull a discussion thread and draft a reply
+- Using Cursor to fetch a course's grade summary while you work on a related project
+
+<CardGroup cols={2}>
+  <Card title="Transports" icon="network-wired" href="/mcp/transports">
+    Learn about stdio, HTTP, and SSE transports and when to use each one.
+  </Card>
+  <Card title="Client setup" icon="plug" href="/mcp/client-setup">
+    Connect Canvas MCP to Claude Desktop, Cursor, or any HTTP-based client.
+  </Card>
+</CardGroup>

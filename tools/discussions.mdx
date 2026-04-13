@@ -1,0 +1,264 @@
+---
+title: "list_discussion_topics and get_discussion_entries"
+description: "Canvas MCP tools for browsing discussion boards: filter topics by title, graded status, or message content, then read full thread entries with replies."
+---
+
+The discussion tools give AI agents and CLI users direct access to Canvas discussion boards. Use `list_discussion_topics` to discover which discussions exist in a course, then pass a topic ID to `get_discussion_entries` to read the full thread with replies and participant metadata.
+
+---
+
+## `list_discussion_topics`
+
+Lists discussion topics in a course. The tool merges results from the Canvas discussions API and the assignments API so that graded discussions backed by assignments are always included. Announcements are excluded by default.
+
+### Parameters
+
+<ParamField path="course_id" type="string" required>
+  The Canvas course ID. Obtain this from `list_courses` or `resolve_course`.
+</ParamField>
+
+<ParamField path="search" type="string">
+  Substring filter applied to topic titles (or titles and message bodies when `search_in` is `title_or_message`). Case-insensitive. When `exact_title` is `true`, this value is compared as a case-folded exact match instead.
+</ParamField>
+
+<ParamField path="exact_title" type="boolean">
+  When `true`, `search` is treated as a case-insensitive exact title match instead of a substring search. Has no effect when `search` is omitted.
+</ParamField>
+
+<ParamField path="search_in" type="string" default="title">
+  Controls which fields the `search` substring is matched against. Accepted values: `title` (default) or `title_or_message`.
+</ParamField>
+
+<ParamField path="only_graded" type="boolean">
+  When `true`, only topics that have an associated `assignment_id` (i.e., graded discussions) are returned.
+</ParamField>
+
+<ParamField path="include_announcements" type="boolean" default="false">
+  When `true`, announcement topics are included alongside regular discussion topics. By default they are filtered out.
+</ParamField>
+
+<ParamField path="limit" type="integer" default="100">
+  Maximum number of topics to return. Accepted range: 1–300.
+</ParamField>
+
+<Note>
+  `search` and `exact_title` interact: set `exact_title: true` to match `"Week 1 Discussion"` exactly, or omit it to match anything containing `"week 1"` in the title.
+</Note>
+
+### Return value
+
+<ResponseField name="course_id" type="string">
+  The course ID as provided.
+</ResponseField>
+
+<ResponseField name="count" type="integer">
+  Number of topics returned after filtering.
+</ResponseField>
+
+<ResponseField name="filters" type="object">
+  Echo of the active filter values: `search`, `search_in`, `exact_title`, `only_graded`, `include_announcements`.
+</ResponseField>
+
+<ResponseField name="topics" type="array">
+  <Expandable title="Topic object fields">
+    <ResponseField name="id" type="string">
+      Discussion topic ID.
+    </ResponseField>
+    <ResponseField name="id_aliases" type="array">
+      Alternative ID representations for flexible lookup.
+    </ResponseField>
+    <ResponseField name="title" type="string">
+      Topic title. Falls back to `"Untitled discussion"` when absent.
+    </ResponseField>
+    <ResponseField name="message" type="string">
+      Opening message body of the topic (may be HTML).
+    </ResponseField>
+    <ResponseField name="posted_at" type="string">
+      ISO 8601 timestamp when the topic was posted.
+    </ResponseField>
+    <ResponseField name="last_reply_at" type="string">
+      ISO 8601 timestamp of the most recent reply.
+    </ResponseField>
+    <ResponseField name="discussion_type" type="string">
+      Canvas discussion type, e.g. `"side_comment"` or `"threaded"`.
+    </ResponseField>
+    <ResponseField name="is_announcement" type="boolean">
+      `true` when the topic is an announcement.
+    </ResponseField>
+    <ResponseField name="published" type="boolean">
+      Whether the topic is visible to students.
+    </ResponseField>
+    <ResponseField name="locked" type="boolean">
+      Whether new replies are locked.
+    </ResponseField>
+    <ResponseField name="pinned" type="boolean">
+      Whether the topic is pinned to the top of the board.
+    </ResponseField>
+    <ResponseField name="assignment_id" type="string">
+      Present when the discussion is a graded assignment.
+    </ResponseField>
+    <ResponseField name="points_possible" type="number">
+      Point value for graded discussions.
+    </ResponseField>
+    <ResponseField name="html_url" type="string">
+      Direct Canvas URL to the discussion topic.
+    </ResponseField>
+    <ResponseField name="source" type="string">
+      Indicates where the topic was sourced from: `"discussion_topics_api"` or `"assignments_api"`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Examples
+
+```bash
+# List all discussions in a course
+canvas tool run list_discussion_topics --args '{"course_id": "12345"}'
+
+# Search for topics containing "midterm" in the title
+canvas tool run list_discussion_topics --args '{"course_id": "12345", "search": "midterm"}'
+
+# Exact title match
+canvas tool run list_discussion_topics --args '{"course_id": "12345", "search": "Week 3 Discussion", "exact_title": true}'
+
+# List only graded discussions, up to 50
+canvas tool run list_discussion_topics --args '{"course_id": "12345", "only_graded": true, "limit": 50}'
+
+# Include announcements alongside discussions
+canvas tool run list_discussion_topics --args '{"course_id": "12345", "include_announcements": true}'
+```
+
+<Tip>
+  Use the CLI shorthand for quick lookups:
+
+  ```bash
+  canvas discussion show 12345 67890
+  ```
+</Tip>
+
+---
+
+## `get_discussion_entries`
+
+Fetches the full thread view for a single discussion topic, including top-level entries, nested replies, and participant metadata. The tool resolves the topic by ID or by assignment ID alias, so you can pass either a discussion topic ID or an assignment ID if the discussion is graded.
+
+### Parameters
+
+<ParamField path="course_id" type="string" required>
+  The Canvas course ID.
+</ParamField>
+
+<ParamField path="topic_id" type="string" required>
+  The discussion topic ID. Obtain this from `list_discussion_topics`. You may also pass an assignment ID for graded discussions — the tool resolves the linked topic automatically.
+</ParamField>
+
+<ParamField path="include_replies" type="boolean" default="true">
+  When `true` (the default), nested replies are included under each top-level entry.
+</ParamField>
+
+<ParamField path="include_participants" type="boolean" default="true">
+  When `true` (the default), a `participants` array is included with the display name, avatar URL, and pronoun fields for every user who posted in the thread.
+</ParamField>
+
+<ParamField path="limit" type="integer" default="200">
+  Maximum number of top-level entries to return. Accepted range: 1–300. Replies nested under each entry are not counted against this limit.
+</ParamField>
+
+<Warning>
+  If `topic_id` cannot be resolved to a valid discussion topic, the tool returns an error object with `"error": "not_found"`. Always call `list_discussion_topics` first to retrieve a valid topic ID.
+</Warning>
+
+### Return value
+
+<ResponseField name="course_id" type="string">
+  The course ID as provided.
+</ResponseField>
+
+<ResponseField name="requested_topic_id" type="string">
+  The `topic_id` as supplied to the call.
+</ResponseField>
+
+<ResponseField name="resolved_topic_id" type="string">
+  The canonical topic ID that Canvas returned entries for. May differ from `requested_topic_id` when an assignment ID was passed.
+</ResponseField>
+
+<ResponseField name="assignment_linked_topic_id" type="string">
+  Set when an assignment ID was passed and the tool resolved it to a discussion topic ID.
+</ResponseField>
+
+<ResponseField name="topic" type="object">
+  <Expandable title="Topic summary fields">
+    <ResponseField name="id" type="string">Topic ID.</ResponseField>
+    <ResponseField name="title" type="string">Topic title.</ResponseField>
+    <ResponseField name="message" type="string">Opening message body.</ResponseField>
+    <ResponseField name="assignment_id" type="string">Assignment ID for graded discussions.</ResponseField>
+    <ResponseField name="discussion_type" type="string">Canvas discussion type.</ResponseField>
+    <ResponseField name="published" type="boolean">Whether the topic is published.</ResponseField>
+    <ResponseField name="locked" type="boolean">Whether replies are locked.</ResponseField>
+    <ResponseField name="html_url" type="string">Canvas URL for the topic.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="participants_count" type="integer">
+  Number of unique participants returned in the `participants` array.
+</ResponseField>
+
+<ResponseField name="participants" type="array">
+  User objects with `id`, `display_name`, `avatar_image_url`, `html_url`, and `pronouns`. Only populated when `include_participants` is `true`.
+</ResponseField>
+
+<ResponseField name="top_level_entries_count" type="integer">
+  Number of top-level entries in the `entries` array (after the `limit` is applied).
+</ResponseField>
+
+<ResponseField name="total_entries_count" type="integer">
+  Total count including all nested replies across every entry.
+</ResponseField>
+
+<ResponseField name="entries" type="array">
+  Top-level post objects. Each entry contains its author ID, message, created timestamp, and a `replies` array when `include_replies` is `true`.
+</ResponseField>
+
+### Examples
+
+```bash
+# Fetch full thread for topic 67890 in course 12345
+canvas tool run get_discussion_entries --args '{"course_id": "12345", "topic_id": "67890"}'
+
+# Fetch without nested replies
+canvas tool run get_discussion_entries --args '{"course_id": "12345", "topic_id": "67890", "include_replies": false}'
+
+# Fetch without participant metadata
+canvas tool run get_discussion_entries --args '{"course_id": "12345", "topic_id": "67890", "include_participants": false}'
+
+# Limit to first 50 top-level entries
+canvas tool run get_discussion_entries --args '{"course_id": "12345", "topic_id": "67890", "limit": 50}'
+```
+
+```bash
+# CLI shorthand
+canvas discussion show 12345 67890
+```
+
+---
+
+## Workflow: list then read
+
+The typical pattern for reading a discussion thread:
+
+<Steps>
+  <Step title="List topics">
+    Call `list_discussion_topics` to find the topic ID.
+
+    ```bash
+    canvas tool run list_discussion_topics --args '{"course_id": "12345", "search": "Week 3"}'
+    ```
+  </Step>
+  <Step title="Read entries">
+    Pass the returned `id` to `get_discussion_entries`.
+
+    ```bash
+    canvas tool run get_discussion_entries --args '{"course_id": "12345", "topic_id": "67890"}'
+    ```
+  </Step>
+</Steps>

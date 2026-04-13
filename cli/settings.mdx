@@ -1,0 +1,171 @@
+---
+title: 'canvas settings — Chrome profile selection and auth state'
+description: 'Reference for canvas settings profiles, choose-profile, show, and clear: how to list Chrome profiles, pin one for use, inspect saved state, and reset settings.'
+keywords: ['canvas', 'cli', 'settings', 'chrome profile', 'auth', 'configuration']
+---
+
+The `canvas settings` subcommand group manages which Chrome profile the CLI reads cookies from and lets you inspect or reset the persisted configuration. Settings are stored locally on disk and are read on every command invocation alongside the Chrome cookies.
+
+## How auth and settings interact
+
+The CLI reads Canvas session cookies directly from Chrome. If you have multiple Chrome profiles — for example, one for a personal Google account and another for a school account — the CLI needs to know which profile to use. `canvas settings` is where you configure that.
+
+When no profile is saved, the CLI attempts to auto-detect a Canvas domain across all Chrome profiles. If exactly one Canvas domain is found, it uses that profile automatically. If multiple are found, commands will fail until you pin a profile with `canvas settings choose-profile`.
+
+---
+
+## `canvas settings profiles`
+
+List all detected Chrome profiles and show their auth status.
+
+```bash
+canvas settings profiles
+```
+
+Each entry in the returned JSON array includes:
+
+- `name` — Chrome profile display name
+- `path` — filesystem path to the profile directory
+- `auth_status` — whether a valid Canvas session was found (`ok`, `error`, or `unknown`)
+- `detected_canvas_domains` — Canvas domains detected in this profile's cookies
+- `resolved_canvas_base_url` — the resolved Canvas base URL if one was found
+- `selected` — `true` if this profile is the currently saved selection
+
+```json
+{
+  "profiles": [
+    {
+      "name": "School",
+      "path": "/Users/you/Library/Application Support/Google/Chrome/Profile 1",
+      "auth_status": "ok",
+      "detected_canvas_domains": ["school.instructure.com"],
+      "resolved_canvas_base_url": "https://school.instructure.com",
+      "selected": true
+    },
+    {
+      "name": "Personal",
+      "path": "/Users/you/Library/Application Support/Google/Chrome/Default",
+      "auth_status": "error",
+      "detected_canvas_domains": [],
+      "resolved_canvas_base_url": null,
+      "selected": false
+    }
+  ]
+}
+```
+
+---
+
+## `canvas settings choose-profile`
+
+Save a Chrome profile as the active selection for all subsequent CLI commands.
+
+```bash
+canvas settings choose-profile
+canvas settings choose-profile "School"
+canvas settings choose-profile "terpmail.umd.edu"
+```
+
+Called without an argument in an interactive terminal, the command lists all detected profiles and prompts you to select one by number.
+
+<ParamField path="profile" type="string">
+  Profile name or domain to select. Omit for interactive selection. Required in headless (non-TTY) environments.
+</ParamField>
+
+### Interactive mode
+
+When run in a terminal without an argument, the CLI prints a numbered list of profiles and waits for input:
+
+```bash
+canvas settings choose-profile
+```
+
+```
+1.   Personal [error] -
+2. * School [ok] school.instructure.com
+Select profile number: 2
+```
+
+The `*` marker indicates the currently saved profile.
+
+### Non-interactive mode
+
+In scripts or CI environments where stdin is not a TTY, pass the profile name directly:
+
+```bash
+canvas settings choose-profile "School"
+```
+
+On success, the saved profile is printed as JSON:
+
+```json
+{
+  "selected_profile": {
+    "name": "School",
+    "path": "/Users/you/Library/Application Support/Google/Chrome/Profile 1"
+  }
+}
+```
+
+<Warning>
+  Running `canvas settings choose-profile` without an argument in a non-TTY environment will exit with code 1. Use the quoted profile name form in scripts.
+</Warning>
+
+---
+
+## `canvas settings show`
+
+Print the current settings file contents alongside a live auth status check.
+
+```bash
+canvas settings show
+```
+
+The response contains two keys:
+
+- `settings` — the raw persisted settings object (selected profile name and path, if any)
+- `auth` — the result of a live Canvas auth probe (equivalent to `canvas auth-status`)
+
+```json
+{
+  "settings": {
+    "selected_profile_name": "School",
+    "selected_profile_path": "/Users/you/Library/Application Support/Google/Chrome/Profile 1"
+  },
+  "auth": {
+    "auth_mode": "chrome_cookies",
+    "auth_verified": true,
+    "auth_status": "ok"
+  }
+}
+```
+
+If no profile has been saved yet, `settings` will be an empty object or omit the profile keys.
+
+---
+
+## `canvas settings clear`
+
+Delete the saved settings file, resetting the CLI to its default auto-detection behavior.
+
+```bash
+canvas settings clear
+```
+
+```json
+{ "cleared": true }
+```
+
+After clearing, the CLI will attempt to auto-detect a Canvas domain from Chrome cookies on the next command. Run `canvas settings choose-profile` again to re-pin a profile.
+
+<Warning>
+  `canvas settings clear` is not reversible. If you have a specific profile saved, you will need to run `canvas settings choose-profile` again after clearing.
+</Warning>
+
+---
+
+## What gets persisted
+
+The settings file stores the **selected Chrome profile name and filesystem path**. It does not store cookies, tokens, or any Canvas credentials. Cookies are read fresh from Chrome on every request, so session and CSRF rotation are picked up automatically.
+
+The settings file location depends on the OS and follows the standard user config directory conventions used by the underlying `auth.settings` module.

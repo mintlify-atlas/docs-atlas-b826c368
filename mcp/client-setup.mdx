@@ -1,0 +1,133 @@
+---
+title: 'Connect Canvas MCP to Claude Desktop and Cursor'
+description: 'Step-by-step instructions for wiring Canvas MCP into Claude Desktop, Cursor, and HTTP-capable MCP clients using stdio or HTTP transports.'
+keywords: ['canvas mcp', 'claude desktop', 'cursor', 'mcp client', 'mcpServers', 'client setup']
+---
+
+Canvas MCP works with any client that implements the Model Context Protocol. The most common setup uses the `start_mcp_server.sh` helper script as the stdio command, which handles environment loading automatically. For networked or remote clients, you can run the server in HTTP mode instead.
+
+<Warning>
+Canvas MCP reads your Canvas session cookies from Chrome. Make sure you have logged in to your Canvas instance in Chrome at least once, and that `CANVAS_BASE_URL` is set in `.env` if you have multiple Canvas domains in your browser. If auth is not configured, the server will exit immediately with an error before any MCP client can connect.
+</Warning>
+
+## stdio clients (Claude Desktop, Cursor)
+
+Desktop MCP clients like Claude Desktop and Cursor launch the server as a subprocess over stdio. All you need is a JSON config snippet pointing to the `start_mcp_server.sh` script.
+
+<Tabs>
+  <Tab title="Claude Desktop">
+
+### Locate the config file
+
+On macOS, Claude Desktop reads its MCP server configuration from:
+
+```
+~/Library/Application Support/Claude/claude_desktop_config.json
+```
+
+Create the file if it does not exist.
+
+### Add the Canvas MCP entry
+
+<Steps>
+  <Step title="Open the config file">
+    Open `~/Library/Application Support/Claude/claude_desktop_config.json` in any text editor.
+  </Step>
+  <Step title="Add the canvasmcp entry">
+    Paste the following, replacing the path with the absolute path to your `canvasmcp` checkout:
+
+    ```json claude_desktop_config.json
+    {
+      "mcpServers": {
+        "canvasmcp": {
+          "command": "/absolute/path/to/canvasmcp/scripts/start_mcp_server.sh"
+        }
+      }
+    }
+    ```
+  </Step>
+  <Step title="Restart Claude Desktop">
+    Quit and reopen Claude Desktop. Canvas MCP will appear in the tools panel on the next launch.
+  </Step>
+</Steps>
+
+<Note>
+On macOS, the first run will trigger a Keychain prompt asking for Chrome cookie access. Click **Allow** or **Always Allow** to let Canvas MCP read your Canvas session.
+</Note>
+
+  </Tab>
+  <Tab title="Cursor">
+
+### Add the Canvas MCP entry
+
+Cursor uses the same `mcpServers` JSON format. Open your Cursor MCP settings and add:
+
+```json cursor mcp settings
+{
+  "mcpServers": {
+    "canvasmcp": {
+      "command": "/absolute/path/to/canvasmcp/scripts/start_mcp_server.sh"
+    }
+  }
+}
+```
+
+Replace `/absolute/path/to/canvasmcp` with the real path on your machine. Restart Cursor after saving.
+
+  </Tab>
+</Tabs>
+
+## What `start_mcp_server.sh` does
+
+The helper script resolves its own location, changes to the project root, and runs:
+
+```bash scripts/start_mcp_server.sh
+uv run --env-file .env canvas-mcp "$@"
+```
+
+It passes all arguments through to `canvas-mcp`, so you can append any CLI flag (for example, `--transport http`) and it will be forwarded correctly. The `--env-file .env` flag ensures `CANVAS_BASE_URL` and any other environment variables are loaded before the server starts.
+
+## HTTP transport (networked clients)
+
+If your MCP client connects over the network rather than launching a local subprocess, run Canvas MCP in HTTP mode on a reachable interface:
+
+<Steps>
+  <Step title="Start the HTTP server">
+    ```bash
+    uv run canvas-mcp --transport http --host 127.0.0.1 --port 8000
+    ```
+
+    Or with the helper script:
+
+    ```bash
+    ./scripts/start_mcp_server.sh --transport http --host 127.0.0.1 --port 8000
+    ```
+
+    The MCP endpoint is available at `http://127.0.0.1:8000/mcp`.
+  </Step>
+  <Step title="Point your client at the endpoint">
+    Configure your MCP client to connect to `http://127.0.0.1:8000/mcp`. The exact setting name varies by client — consult your client's documentation for the HTTP MCP endpoint field.
+  </Step>
+</Steps>
+
+<Tip>
+Bind to `127.0.0.1` unless you need the server to be reachable from other machines. Exposing Canvas MCP on `0.0.0.0` without additional auth or a reverse proxy will make your Canvas session accessible to anyone on the network.
+</Tip>
+
+## Troubleshooting
+
+**The server exits immediately after launch.**
+Canvas MCP calls `ensure_canvas_auth_configured()` before starting. If it cannot find a Canvas base URL or valid Chrome cookies, it exits with an error. Run `uv run canvas auth-status` in a terminal to see the exact failure reason.
+
+**Claude Desktop shows no Canvas tools.**
+Double-check that the path in `command` is an absolute path and that the script is executable (`chmod +x scripts/start_mcp_server.sh`). Relative paths are not supported in MCP client configs.
+
+**macOS Keychain prompt keeps appearing.**
+Click **Always Allow** (not just **Allow**) when macOS asks for Keychain access. Clicking **Allow** only grants access for the current session and the prompt will reappear on the next launch.
+
+**Multiple Canvas domains in Chrome.**
+If you have cookies for more than one Canvas institution, set `CANVAS_BASE_URL` explicitly in `.env` to tell the server which domain to use:
+
+```bash .env
+CANVAS_BASE_URL=https://school.instructure.com
+```

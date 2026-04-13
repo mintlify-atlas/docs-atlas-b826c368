@@ -1,97 +1,67 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Canvas MCP: Canvas LMS for AI agents and your terminal"
+description: "Canvas MCP exposes Canvas LMS data to AI assistants and the command line via the Model Context Protocol. Install once, use everywhere."
 ---
 
-## Setting up
+Canvas MCP is a FastMCP server and CLI that connects your Canvas LMS account to AI agents and terminal workflows. It reads your session directly from Chrome — no API tokens to manage — and exposes 26 tools covering courses, assignments, discussions, files, grades, and more.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get Canvas MCP running in under five minutes
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Installation" icon="download" href="/installation">
+    Install the CLI and MCP server on your machine
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Authentication" icon="key" href="/auth/overview">
+    How Chrome cookie auth works and how to configure it
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="MCP Server" icon="server" href="/mcp/overview">
+    Connect Canvas MCP to Claude, Cursor, or any MCP client
   </Card>
-</Columns>
+  <Card title="CLI Reference" icon="terminal" href="/cli/overview">
+    Full reference for every `canvas` CLI command and flag
+  </Card>
+  <Card title="Tool Reference" icon="wrench" href="/tools/core">
+    All 26 MCP tools with parameters and return shapes
+  </Card>
+</CardGroup>
 
-## Create beautiful pages
+## What you can do
 
-Everything you need to create world-class documentation.
+Canvas MCP gives AI agents and CLI users structured access to your Canvas LMS data:
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+<Steps>
+  <Step title="Install and sync dependencies">
+    Clone the repository and run `uv sync` to install everything.
+  </Step>
+  <Step title="Authenticate via Chrome">
+    Canvas MCP reads your existing Canvas session cookies from Chrome — no API key setup required.
+  </Step>
+  <Step title="Use the CLI">
+    Run `canvas courses` to list your courses, or `canvas course context <id>` to get a full course snapshot.
+  </Step>
+  <Step title="Connect an AI agent">
+    Point any MCP client (Claude Desktop, Cursor, etc.) at the `canvas-mcp` server to give your AI assistant live Canvas access.
+  </Step>
+</Steps>
 
-## Need inspiration?
+## Key capabilities
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<CardGroup cols={2}>
+  <Card title="Course access" icon="book">
+    List courses, fetch syllabi, pages, tabs, modules, and people enrolled in any course.
+  </Card>
+  <Card title="Assignments & grades" icon="square-check">
+    View upcoming assignments, submission details, grading groups, and your current grade summary.
+  </Card>
+  <Card title="Discussions & announcements" icon="comments">
+    Read discussion threads and course announcements with full reply context.
+  </Card>
+  <Card title="Files & folders" icon="folder">
+    Browse, list, and download files and folders attached to any course.
+  </Card>
+</CardGroup>
+
+<Note>
+  Canvas MCP currently requires **Chrome** for authentication. Firefox and other browsers are not supported. See [Authentication](/auth/overview) for details.
+</Note>

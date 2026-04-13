@@ -1,0 +1,59 @@
+---
+title: "Canvas MCP: AI access to Canvas LMS"
+description: "Canvas MCP is a FastMCP server and CLI that lets AI agents read your Canvas LMS data using your existing Chrome session — no API tokens required."
+keywords: ["canvas", "mcp", "lms", "fastmcp", "ai", "canvas lms"]
+---
+
+Canvas MCP is a [FastMCP](https://github.com/jlowin/fastmcp) server paired with a command-line interface that exposes Canvas LMS data to AI agents and MCP clients. It authenticates by reading your existing Chrome browser session, so you never need to generate or manage Canvas API tokens.
+
+## Why Canvas MCP
+
+Canvas LMS exposes a rich REST API, but wiring AI agents to it requires token provisioning, session management, and CSRF handling — plumbing that most teams would rather skip. Canvas MCP handles all of that automatically. Your agent connects to the MCP server; the server reads live cookies straight from Chrome on every request, so session and CSRF rotation are picked up without any extra work.
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="Zero-token auth" icon="cookie">
+    Reads Canvas session cookies directly from Chrome. No API token generation, no `.env` secrets to rotate.
+  </Card>
+  <Card title="FastMCP server" icon="server">
+    Exposes 25+ Canvas tools over stdio, SSE, or HTTP transport so any MCP-compatible client can connect.
+  </Card>
+  <Card title="Typed CLI" icon="rectangle-terminal">
+    The `canvas` command lets you list courses, inspect assignments, read discussions, and check auth status from the terminal.
+  </Card>
+  <Card title="Auto domain detection" icon="magnifying-glass">
+    If `CANVAS_BASE_URL` is unset, the CLI infers your Canvas domain from Chrome cookies automatically.
+  </Card>
+  <Card title="Multiple transports" icon="arrows-left-right">
+    Supports stdio (desktop clients), HTTP (networked agents), and SSE (legacy clients) out of the box.
+  </Card>
+  <Card title="Chrome profile support" icon="user">
+    Select which Chrome profile to read cookies from when you have multiple accounts.
+  </Card>
+</CardGroup>
+
+## How Chrome-based auth works
+
+Canvas MCP uses the [`browser-cookie3`](https://github.com/borisbabic/browser_cookie3) library to read your Canvas session cookies directly from Chrome's local profile storage. It does not store credentials, does not proxy through a third party, and does not require you to export anything. On every request the server fetches fresh cookies, so if Canvas rotates your session the server stays in sync automatically.
+
+<Note>
+  On macOS, Chrome protects its cookie database with the system Keychain. The first time you run a Canvas MCP command, macOS will prompt you to allow access. Click **Allow** or **Always Allow** to proceed.
+</Note>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Install the package and make your first Canvas query in under five minutes.
+  </Card>
+  <Card title="Installation" icon="download" href="/installation">
+    Full installation options, including the `uv tool install` path and both CLI entrypoints.
+  </Card>
+  <Card title="Auth overview" icon="lock" href="/auth/overview">
+    Learn how Chrome cookie auth works and how to configure your Canvas base URL.
+  </Card>
+  <Card title="MCP server overview" icon="plug" href="/mcp/overview">
+    Understand transports, client configuration, and how to connect your AI agent.
+  </Card>
+</CardGroup>

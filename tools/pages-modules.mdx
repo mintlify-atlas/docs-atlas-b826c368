@@ -1,0 +1,441 @@
+---
+title: "Canvas MCP page, tab, and module navigation tools"
+description: "Tools for course navigation structure: list wiki pages, enumerate left-sidebar tabs, fetch tab destinations, and expand module items with content details."
+---
+
+This page covers the tools that handle course navigation structure: wiki pages, left-sidebar tabs, and modules. These tools bridge the gap between a course URL and its underlying content — use them to enumerate what exists, then retrieve specifics.
+
+<Note>
+  **`canvas_get_page` is for wiki pages only.** It does not support assignment submission preview routes, discussion URLs, or other Canvas resource types. For any Canvas URL that is not a wiki page, use `resolve_canvas_url` to route it to the correct tool automatically. Use `list_course_tabs` to enumerate left-sidebar navigation entries such as Home, Syllabus, People, and external tool links.
+</Note>
+
+---
+
+## `list_course_pages`
+
+Lists wiki pages in a course. Returns metadata for each page — title, slug URL, published state, and timestamps — but not the full page body. To read body content, call `canvas_get_page` with the page's `url` slug.
+
+### Parameters
+
+<ParamField path="course_id" type="string" required>
+  The Canvas course ID.
+</ParamField>
+
+<ParamField path="search" type="string">
+  Substring filter matched against page titles. Case-insensitive.
+</ParamField>
+
+<ParamField path="published_only" type="boolean">
+  When `true`, only published pages are returned. When `false`, only unpublished pages are returned. Omit to return all pages regardless of published state.
+</ParamField>
+
+<ParamField path="limit" type="integer" default="100">
+  Maximum number of pages to return. Accepted range: 1–300.
+</ParamField>
+
+### Return value
+
+<ResponseField name="course_id" type="string">
+  The course ID as provided.
+</ResponseField>
+
+<ResponseField name="count" type="integer">
+  Number of pages returned.
+</ResponseField>
+
+<ResponseField name="pages" type="array">
+  <Expandable title="Page object fields">
+    <ResponseField name="page_id" type="string">
+      Unique page identifier.
+    </ResponseField>
+    <ResponseField name="url" type="string">
+      URL slug for the page, e.g. `"week-3-notes"`. Pass this as `url_or_id` to `canvas_get_page`.
+    </ResponseField>
+    <ResponseField name="title" type="string">
+      Page title. Falls back to `"Untitled page"` when absent.
+    </ResponseField>
+    <ResponseField name="created_at" type="string">
+      ISO 8601 creation timestamp.
+    </ResponseField>
+    <ResponseField name="updated_at" type="string">
+      ISO 8601 timestamp of the most recent update.
+    </ResponseField>
+    <ResponseField name="published" type="boolean">
+      Whether the page is visible to students.
+    </ResponseField>
+    <ResponseField name="front_page" type="boolean">
+      Whether this page is set as the course front page.
+    </ResponseField>
+    <ResponseField name="hide_from_students" type="boolean">
+      Whether the page is hidden from students even when published.
+    </ResponseField>
+    <ResponseField name="editing_roles" type="string">
+      Roles allowed to edit the page, e.g. `"teachers"`.
+    </ResponseField>
+    <ResponseField name="html_url" type="string">
+      Full Canvas URL to the page.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Examples
+
+```bash
+# List all pages in course 12345
+canvas tool run list_course_pages --args '{"course_id": "12345"}'
+
+# Search for pages about the syllabus
+canvas tool run list_course_pages --args '{"course_id": "12345", "search": "syllabus"}'
+
+# List only published pages
+canvas tool run list_course_pages --args '{"course_id": "12345", "published_only": true}'
+```
+
+---
+
+## `canvas_get_page`
+
+Fetches the full content of a single Canvas wiki page, including its HTML body. Accepts either a URL slug (e.g. `"week-3-notes"`) or a numeric page ID. When a full Canvas URL is passed, the tool parses it and extracts the slug automatically — but only if the URL points to a `pages` route.
+
+<Warning>
+  `canvas_get_page` only works for canvas wiki page URLs (those containing `/pages/` in the path). Passing an assignment, discussion, file, or submission URL returns an error with `suggested_tool: "resolve_canvas_url"`. Use `resolve_canvas_url` for all other Canvas URL types.
+</Warning>
+
+### Parameters
+
+<ParamField path="course_id" type="string" required>
+  The Canvas course ID.
+</ParamField>
+
+<ParamField path="url_or_id" type="string" required>
+  The page URL slug, numeric page ID, or full Canvas wiki page URL. Obtain the slug from the `url` field returned by `list_course_pages`.
+</ParamField>
+
+<ParamField path="force_as_id" type="boolean" default="false">
+  When `true`, `url_or_id` is always interpreted as a numeric ID even if it looks like a slug. Use this when you have a numeric ID that matches a valid slug pattern.
+</ParamField>
+
+### Return value
+
+<ResponseField name="course_id" type="string">
+  The course ID as provided.
+</ResponseField>
+
+<ResponseField name="requested" type="object">
+  Echo of the `url_or_id` and `force_as_id` values as received.
+</ResponseField>
+
+<ResponseField name="page" type="object">
+  <Expandable title="Page content fields">
+    <ResponseField name="page_id" type="string">
+      Canonical page ID.
+    </ResponseField>
+    <ResponseField name="url" type="string">
+      URL slug for the page.
+    </ResponseField>
+    <ResponseField name="title" type="string">
+      Page title.
+    </ResponseField>
+    <ResponseField name="created_at" type="string">
+      ISO 8601 creation timestamp.
+    </ResponseField>
+    <ResponseField name="updated_at" type="string">
+      ISO 8601 last-updated timestamp.
+    </ResponseField>
+    <ResponseField name="published" type="boolean">
+      Whether the page is published.
+    </ResponseField>
+    <ResponseField name="front_page" type="boolean">
+      Whether this is the course front page.
+    </ResponseField>
+    <ResponseField name="hide_from_students" type="boolean">
+      Whether the page is hidden from students.
+    </ResponseField>
+    <ResponseField name="editing_roles" type="string">
+      Roles allowed to edit the page.
+    </ResponseField>
+    <ResponseField name="html_url" type="string">
+      Full Canvas URL to the page.
+    </ResponseField>
+    <ResponseField name="body" type="string">
+      Full HTML body content of the page.
+    </ResponseField>
+    <ResponseField name="lock_info" type="object">
+      Lock details when the page is locked for the requesting user.
+    </ResponseField>
+    <ResponseField name="locked_for_user" type="boolean">
+      Whether the page is locked for the requesting user.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Examples
+
+```bash
+# Fetch a page by URL slug
+canvas tool run canvas_get_page --args '{"course_id": "12345", "url_or_id": "week-3-notes"}'
+
+# Fetch by numeric page ID
+canvas tool run canvas_get_page --args '{"course_id": "12345", "url_or_id": "999", "force_as_id": true}'
+
+# Fetch using a full Canvas wiki page URL
+canvas tool run canvas_get_page --args '{"course_id": "12345", "url_or_id": "https://school.instructure.com/courses/12345/pages/week-3-notes"}'
+```
+
+---
+
+## `list_course_tabs`
+
+Lists the left-sidebar navigation tabs for a course. Tabs represent the primary navigation entries in Canvas: Home, Announcements, Assignments, Discussions, Pages, Files, Syllabus, Modules, People, and any external tool links (LTIs) installed in the course.
+
+<Tip>
+  Use `list_course_tabs` when you need to discover what navigation entries exist for a course rather than what wiki pages exist. Tabs reflect the actual sidebar — including external tools and hidden entries — while `list_course_pages` only covers wiki page content.
+</Tip>
+
+### Parameters
+
+<ParamField path="course_id" type="string" required>
+  The Canvas course ID.
+</ParamField>
+
+<ParamField path="limit" type="integer" default="100">
+  Maximum number of tabs to return. Accepted range: 1–300.
+</ParamField>
+
+### Return value
+
+<ResponseField name="course_id" type="string">
+  The course ID as provided.
+</ResponseField>
+
+<ResponseField name="count" type="integer">
+  Number of tabs returned.
+</ResponseField>
+
+<ResponseField name="tabs" type="array">
+  <Expandable title="Tab object fields">
+    <ResponseField name="id" type="string">
+      Tab identifier, e.g. `"home"`, `"syllabus"`, `"context_external_tool_123"`. Pass this as `tab_id` to `get_course_tab`.
+    </ResponseField>
+    <ResponseField name="label" type="string">
+      Display label shown in the left sidebar, e.g. `"Syllabus"` or `"Zoom"`.
+    </ResponseField>
+    <ResponseField name="type" type="string">
+      Tab type: `"internal"` for built-in Canvas tabs, `"external"` for LTI tools.
+    </ResponseField>
+    <ResponseField name="position" type="integer">
+      Sidebar order position.
+    </ResponseField>
+    <ResponseField name="hidden" type="boolean">
+      Whether the tab is hidden from students.
+    </ResponseField>
+    <ResponseField name="visibility" type="string">
+      Visibility scope: `"public"`, `"members"`, `"admins"`, or `"none"`.
+    </ResponseField>
+    <ResponseField name="url" type="string">
+      Relative Canvas URL for the tab.
+    </ResponseField>
+    <ResponseField name="full_url" type="string">
+      Absolute Canvas URL for the tab.
+    </ResponseField>
+    <ResponseField name="html_url" type="string">
+      HTML link URL for the tab.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Examples
+
+```bash
+# List all navigation tabs for course 12345
+canvas tool run list_course_tabs --args '{"course_id": "12345"}'
+```
+
+---
+
+## `get_course_tab`
+
+Fetches a single navigation tab by its ID and optionally resolves the tab's destination, returning the full content the tab points to. When `include_target` is `true`, the tool internally calls `resolve_canvas_url` on the tab URL and returns the result as the `target` field.
+
+### Parameters
+
+<ParamField path="course_id" type="string" required>
+  The Canvas course ID.
+</ParamField>
+
+<ParamField path="tab_id" type="string" required>
+  The tab identifier. Obtain this from `list_course_tabs`. Examples: `"home"`, `"syllabus"`, `"context_external_tool_42"`.
+</ParamField>
+
+<ParamField path="include_target" type="boolean" default="true">
+  When `true` (the default), the tool resolves the tab's destination URL and appends the result as a `target` object. Set to `false` to skip resolution and return only tab metadata.
+</ParamField>
+
+### Return value
+
+<ResponseField name="course_id" type="string">
+  The course ID as provided.
+</ResponseField>
+
+<ResponseField name="tab_id" type="string">
+  The tab ID as provided.
+</ResponseField>
+
+<ResponseField name="tab" type="object">
+  The tab metadata object with the same fields as entries in `list_course_tabs`.
+</ResponseField>
+
+<ResponseField name="target" type="object">
+  Present when `include_target` is `true`. Contains the resolved destination from `resolve_canvas_url`, including resource type, IDs, and fetched details when available. `null` when the tab URL could not be resolved.
+</ResponseField>
+
+### Examples
+
+```bash
+# Fetch the Syllabus tab and resolve its content
+canvas tool run get_course_tab --args '{"course_id": "12345", "tab_id": "syllabus"}'
+
+# Fetch a tab without resolving its destination
+canvas tool run get_course_tab --args '{"course_id": "12345", "tab_id": "syllabus", "include_target": false}'
+
+# Fetch an external LTI tab
+canvas tool run get_course_tab --args '{"course_id": "12345", "tab_id": "context_external_tool_42"}'
+```
+
+---
+
+## `list_modules`
+
+Lists course modules. Modules are the primary organizational structure in many Canvas courses — they group pages, assignments, discussions, files, quizzes, and external URLs into ordered sequences. Optionally includes the items inside each module and their content details.
+
+### Parameters
+
+<ParamField path="course_id" type="string" required>
+  The Canvas course ID.
+</ParamField>
+
+<ParamField path="search" type="string">
+  Substring filter matched against module names. Case-insensitive.
+</ParamField>
+
+<ParamField path="include_items" type="boolean" default="false">
+  When `true`, each module object includes an `items` array listing the content items inside it.
+</ParamField>
+
+<ParamField path="include_content_details" type="boolean" default="false">
+  When `true` and `include_items` is also `true`, each item includes a `content_details` field with additional metadata such as due dates and point values. Has no effect when `include_items` is `false`.
+</ParamField>
+
+<ParamField path="limit" type="integer" default="100">
+  Maximum number of modules to return. Accepted range: 1–300.
+</ParamField>
+
+<ParamField path="items_limit" type="integer" default="100">
+  Maximum number of items to return per module when `include_items` is `true`. Accepted range: 1–300.
+</ParamField>
+
+### Return value
+
+<ResponseField name="course_id" type="string">
+  The course ID as provided.
+</ResponseField>
+
+<ResponseField name="count" type="integer">
+  Number of modules returned.
+</ResponseField>
+
+<ResponseField name="modules" type="array">
+  <Expandable title="Module object fields">
+    <ResponseField name="id" type="string">
+      Module ID.
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Module name. Falls back to `"Untitled module"` when absent.
+    </ResponseField>
+    <ResponseField name="position" type="integer">
+      Order position in the module list.
+    </ResponseField>
+    <ResponseField name="unlock_at" type="string">
+      ISO 8601 timestamp when the module unlocks. `null` if not locked.
+    </ResponseField>
+    <ResponseField name="require_sequential_progress" type="boolean">
+      Whether students must complete items in order.
+    </ResponseField>
+    <ResponseField name="published" type="boolean">
+      Whether the module is visible to students.
+    </ResponseField>
+    <ResponseField name="state" type="string">
+      Completion state for the current user: `"locked"`, `"unlocked"`, `"started"`, or `"completed"`.
+    </ResponseField>
+    <ResponseField name="prerequisite_module_ids" type="array">
+      IDs of modules that must be completed before this one unlocks.
+    </ResponseField>
+    <ResponseField name="items_count" type="integer">
+      Total number of items in the module (even if `include_items` is `false`).
+    </ResponseField>
+    <ResponseField name="items_url" type="string">
+      Canvas API URL to fetch module items directly.
+    </ResponseField>
+    <ResponseField name="items" type="array">
+      Present when `include_items` is `true`. Each item contains:
+
+      - `id` — item ID
+      - `type` — e.g. `"Page"`, `"Assignment"`, `"Discussion"`, `"File"`, `"ExternalUrl"`, `"Quiz"`
+      - `title` — item display name
+      - `page_url` — slug for page items
+      - `content_id` — ID of the linked Canvas object
+      - `html_url` — Canvas URL for the item
+      - `published` — whether the item is published
+      - `position` — order within the module
+      - `completion_requirement` — type and completion status
+      - `content_details` — extended metadata when `include_content_details` is `true`
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Examples
+
+```bash
+# List all modules in course 12345
+canvas tool run list_modules --args '{"course_id": "12345"}'
+
+# List modules with their items
+canvas tool run list_modules --args '{"course_id": "12345", "include_items": true}'
+
+# List modules with items and full content details (due dates, points)
+canvas tool run list_modules --args '{"course_id": "12345", "include_items": true, "include_content_details": true}'
+
+# Search for modules containing "midterm"
+canvas tool run list_modules --args '{"course_id": "12345", "search": "midterm"}'
+
+# Limit to 5 modules, 10 items each
+canvas tool run list_modules --args '{"course_id": "12345", "include_items": true, "limit": 5, "items_limit": 10}'
+```
+
+---
+
+## Choosing the right navigation tool
+
+The three navigation-related tools serve different purposes:
+
+<CardGroup cols={3}>
+  <Card title="list_course_pages" icon="file-lines">
+    Use when you need to find or list wiki pages by title. Returns page slugs and metadata but not body content.
+  </Card>
+  <Card title="list_course_tabs" icon="sidebar">
+    Use when you need the left-sidebar navigation entries: Home, Syllabus, People, external tools (LTIs), and custom tabs.
+  </Card>
+  <Card title="list_modules" icon="layer-group">
+    Use when you need the structured sequence of content — what items a module contains, in what order, and their completion state.
+  </Card>
+</CardGroup>
+
+### Routing Canvas URLs
+
+When you have a Canvas URL but do not know what type of resource it points to, use `resolve_canvas_url`:
+
+```bash
+canvas tool run resolve_canvas_url --args '{"url": "https://school.instructure.com/courses/12345/assignments/67890"}'
+```
+
+The tool parses the URL, identifies the resource type, and fetches details using the appropriate tool automatically. Do not pass non-page URLs to `canvas_get_page`.

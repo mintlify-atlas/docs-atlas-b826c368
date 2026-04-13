@@ -1,0 +1,129 @@
+---
+title: 'canvas discussion — list topics and read threaded replies'
+description: 'Reference for canvas discussion list and show: search filters, graded-only views, reply inclusion, participant metadata, and entry limits.'
+keywords: ['canvas', 'cli', 'discussions', 'discussion topics', 'replies', 'announcements']
+---
+
+The `canvas discussion` subcommand group lets you list discussion topics in a course and fetch the full entry thread for a specific topic. Replies are nested as returned by the Canvas API. All output is printed as pretty-printed JSON.
+
+## `canvas discussion list`
+
+List discussion topics in a course.
+
+```bash
+canvas discussion list 12345
+canvas discussion list 12345 --search "week 3"
+canvas discussion list 12345 --graded
+canvas discussion list 12345 --search "intro" --exact-title
+canvas discussion list 12345 --include-announcements
+```
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<ParamField path="--search" type="string">
+  Filter topics by title (or title and message body, depending on `--search-in`). Case-insensitive.
+</ParamField>
+
+<ParamField path="--graded" type="boolean" default="false">
+  Return only discussions that are graded assignments.
+</ParamField>
+
+<ParamField path="--exact-title" type="boolean" default="false">
+  Require an exact title match when `--search` is set. Without this flag, the search is a substring match.
+</ParamField>
+
+<ParamField path="--include-announcements" type="boolean" default="false">
+  Include announcement topics alongside regular discussion topics.
+</ParamField>
+
+<ParamField path="--search-in" type="string" default="title">
+  Controls where `--search` is applied. Accepted values:
+
+  - `title` (default) — search topic titles only
+  - `title_or_message` — search both titles and message bodies
+</ParamField>
+
+<ParamField path="--limit" type="number" default="100">
+  Maximum number of topics to return.
+</ParamField>
+
+### Examples
+
+Find discussions whose title contains "midterm":
+
+```bash
+canvas discussion list 12345 --search "midterm"
+```
+
+Find a topic by exact title:
+
+```bash
+canvas discussion list 12345 --search "Week 3 Discussion" --exact-title
+```
+
+List all graded discussions, including announcements:
+
+```bash
+canvas discussion list 12345 --graded --include-announcements
+```
+
+Search both titles and message bodies for "climate":
+
+```bash
+canvas discussion list 12345 --search "climate" --search-in title_or_message
+```
+
+---
+
+## `canvas discussion show`
+
+Fetch a discussion topic's entries and nested replies.
+
+```bash
+canvas discussion show 12345 67890
+canvas discussion show 12345 67890 --no-replies
+canvas discussion show 12345 67890 --no-participants
+canvas discussion show 12345 67890 --limit 50
+```
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<ParamField path="topic_id" type="string" required>
+  Discussion topic ID. Use `canvas discussion list` to find topic IDs.
+</ParamField>
+
+<ParamField path="--replies/--no-replies" type="boolean" default="true">
+  Include nested reply entries. Use `--no-replies` to return top-level entries only.
+</ParamField>
+
+<ParamField path="--participants/--no-participants" type="boolean" default="true">
+  Include participant metadata (display name, avatar URL) alongside entries. Use `--no-participants` to omit it.
+</ParamField>
+
+<ParamField path="--limit" type="number" default="200">
+  Maximum number of entries to return.
+</ParamField>
+
+### Examples
+
+Fetch a discussion thread with all replies and participant info:
+
+```bash
+canvas discussion show 12345 67890
+```
+
+Fetch top-level posts only, without participant metadata:
+
+```bash
+canvas discussion show 12345 67890 --no-replies --no-participants
+```
+
+Fetch up to 50 entries for a high-volume thread:
+
+```bash
+canvas discussion show 12345 67890 --limit 50
+```

@@ -1,0 +1,341 @@
+---
+title: 'canvas course commands — overview, context, pages'
+description: 'Reference for every canvas course subcommand: list courses, fetch metadata, aggregate snapshots, browse pages, tabs, modules, grades, and roster.'
+keywords: ['canvas', 'cli', 'courses', 'course overview', 'course context', 'modules', 'grades']
+---
+
+The `canvas courses` command and `canvas course` subcommand group cover everything from listing your enrolled courses to pulling a full aggregated snapshot of a course's content. All output is printed as pretty-printed JSON to stdout.
+
+## `canvas courses`
+
+List your enrolled Canvas courses.
+
+```bash
+canvas courses
+canvas courses --all
+canvas courses --search "biology" --limit 20
+```
+
+By default, only courses marked as favorites in Canvas are returned. Pass `--all` to include every active enrollment.
+
+<ParamField path="--all" type="boolean" default="false">
+  Include all active enrollments instead of favorites only.
+</ParamField>
+
+<ParamField path="--search" type="string">
+  Filter courses by name or course code. Case-insensitive substring match.
+</ParamField>
+
+<ParamField path="--limit" type="number" default="50">
+  Maximum number of courses to return.
+</ParamField>
+
+---
+
+## `canvas course overview`
+
+Fetch course-level metadata and teacher information for a single course.
+
+```bash
+canvas course overview 12345
+```
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+---
+
+## `canvas course syllabus`
+
+Fetch syllabus metadata and optionally the full syllabus HTML body.
+
+```bash
+canvas course syllabus 12345
+canvas course syllabus 12345 --no-body
+canvas course syllabus 12345 --body-char-limit 5000
+```
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<ParamField path="--body/--no-body" type="boolean" default="true">
+  Include the syllabus HTML body in the response. Use `--no-body` to skip it.
+</ParamField>
+
+<ParamField path="--body-char-limit" type="number" default="12000">
+  Maximum number of characters to include from the syllabus body.
+</ParamField>
+
+---
+
+## `canvas course context`
+
+Return an aggregated snapshot of a course — upcoming assignments, recent announcements, and modules — in a single call. Useful for a quick orientation before diving into a specific area.
+
+```bash
+canvas course context 12345
+canvas course context 12345 --body
+canvas course context 12345 --upcoming-limit 10 --announcements-limit 5
+```
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<ParamField path="--body/--no-body" type="boolean" default="false">
+  Include the syllabus body in the snapshot. Off by default to keep output compact.
+</ParamField>
+
+<ParamField path="--upcoming-limit" type="number" default="20">
+  Maximum number of upcoming assignments to include.
+</ParamField>
+
+<ParamField path="--announcements-limit" type="number" default="10">
+  Maximum number of announcements to include.
+</ParamField>
+
+<ParamField path="--modules-limit" type="number" default="20">
+  Maximum number of modules to include.
+</ParamField>
+
+<ParamField path="--module-items-limit" type="number" default="50">
+  Maximum number of items per module.
+</ParamField>
+
+---
+
+## `canvas course pages`
+
+List wiki pages in a course.
+
+```bash
+canvas course pages 12345
+canvas course pages 12345 --search "syllabus"
+canvas course pages 12345 --published --limit 50
+```
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<ParamField path="--search" type="string">
+  Filter by page title or URL slug. Case-insensitive substring match.
+</ParamField>
+
+<ParamField path="--published" type="boolean">
+  When set, return only published pages. Omit the flag to include both published and unpublished pages.
+</ParamField>
+
+<ParamField path="--limit" type="number" default="100">
+  Maximum number of pages to return.
+</ParamField>
+
+---
+
+## `canvas course page`
+
+Fetch a single wiki page by URL slug or page ID.
+
+```bash
+canvas course page 12345 syllabus
+canvas course page 12345 98765 --force-as-id
+```
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<ParamField path="url_or_id" type="string" required>
+  Page URL slug (e.g. `syllabus`) or numeric page ID.
+</ParamField>
+
+<ParamField path="--force-as-id" type="boolean" default="false">
+  Treat the second argument strictly as a numeric page ID rather than a URL slug.
+</ParamField>
+
+<Note>
+  `canvas course page` only works for wiki pages (URLs containing `/pages/`). For assignment submission preview routes, use `canvas url` instead.
+</Note>
+
+---
+
+## `canvas course tabs`
+
+List the left-sidebar navigation tabs for a course.
+
+```bash
+canvas course tabs 12345
+canvas course tabs 12345 --limit 50
+```
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<ParamField path="--limit" type="number" default="100">
+  Maximum number of tabs to return.
+</ParamField>
+
+---
+
+## `canvas course tab`
+
+Fetch a single navigation tab and optionally resolve its destination URL.
+
+```bash
+canvas course tab 12345 home
+canvas course tab 12345 modules
+canvas course tab 12345 syllabus --no-target
+```
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<ParamField path="tab_id" type="string" required>
+  Tab identifier, such as `home`, `modules`, or `syllabus`.
+</ParamField>
+
+<ParamField path="--target/--no-target" type="boolean" default="true">
+  Resolve the tab's destination URL and fetch its content. Use `--no-target` to skip the resolution step.
+</ParamField>
+
+---
+
+## `canvas course people`
+
+List users enrolled in a course.
+
+```bash
+canvas course people 12345
+canvas course people 12345 --search "jane"
+canvas course people 12345 --role student --role ta
+canvas course people 12345 --no-email --limit 200
+```
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<ParamField path="--search" type="string">
+  Filter by name or email address. Case-insensitive substring match.
+</ParamField>
+
+<ParamField path="--role" type="string">
+  Enrollment type filter (e.g. `student`, `teacher`, `ta`). Repeat the flag to include multiple roles.
+</ParamField>
+
+<ParamField path="--email/--no-email" type="boolean" default="true">
+  Include email addresses in the response.
+</ParamField>
+
+<ParamField path="--limit" type="number" default="100">
+  Maximum number of people to return.
+</ParamField>
+
+---
+
+## `canvas course modules`
+
+List modules in a course, optionally including their items.
+
+```bash
+canvas course modules 12345
+canvas course modules 12345 --items
+canvas course modules 12345 --items --details
+canvas course modules 12345 --search "week 1" --items --limit 10
+```
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<ParamField path="--search" type="string">
+  Filter by module name. Case-insensitive substring match.
+</ParamField>
+
+<ParamField path="--items/--no-items" type="boolean" default="false">
+  Include items within each module.
+</ParamField>
+
+<ParamField path="--details/--no-details" type="boolean" default="false">
+  Include Canvas content details for module items. Requires `--items`.
+</ParamField>
+
+<ParamField path="--limit" type="number" default="100">
+  Maximum number of modules to return.
+</ParamField>
+
+<ParamField path="--items-limit" type="number" default="100">
+  Maximum number of items per module.
+</ParamField>
+
+---
+
+## `canvas course grades`
+
+Fetch a grade summary with assignment-group breakdown for a student.
+
+```bash
+canvas course grades 12345
+canvas course grades 12345 --student-id 99999
+```
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<ParamField path="--student-id" type="string" default="self">
+  Canvas student ID. Defaults to `self` (the authenticated user). Accessing another student's grades requires instructor-level permissions in Canvas.
+</ParamField>
+
+---
+
+## `canvas course submissions`
+
+List submission records for a student in a course.
+
+```bash
+canvas course submissions 12345
+canvas course submissions 12345 --assignment 67890
+canvas course submissions 12345 --workflow-state submitted --submitted-since 2024-09-01T00:00:00Z
+canvas course submissions 12345 --assignment 67890 --assignment 11111 --limit 50
+```
+
+<ParamField path="course_id" type="string" required>
+  Canvas course ID.
+</ParamField>
+
+<ParamField path="--student-id" type="string" default="self">
+  Canvas student ID. Defaults to `self`.
+</ParamField>
+
+<ParamField path="--assignment" type="string">
+  Assignment ID filter. Repeat the flag to filter by multiple assignments.
+</ParamField>
+
+<ParamField path="--include" type="string">
+  Submission include values passed to the Canvas API. Repeat as needed.
+</ParamField>
+
+<ParamField path="--grouped" type="boolean" default="false">
+  Keep Canvas grouped submission shells in the response.
+</ParamField>
+
+<ParamField path="--workflow-state" type="string">
+  Submission workflow state filter (e.g. `submitted`, `graded`, `pending_review`).
+</ParamField>
+
+<ParamField path="--submitted-since" type="string">
+  ISO datetime lower bound for submission time.
+</ParamField>
+
+<ParamField path="--graded-since" type="string">
+  ISO datetime lower bound for grading time.
+</ParamField>
+
+<ParamField path="--limit" type="number" default="200">
+  Maximum number of submissions to return.
+</ParamField>

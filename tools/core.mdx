@@ -1,0 +1,320 @@
+---
+title: 'Core Tools: Courses, Announcements & Calendar'
+description: 'Reference for get_today, list_courses, resolve_course, list_announcements, and list_calendar_events — the foundational Canvas MCP tools.'
+keywords: ['canvas mcp', 'list courses', 'resolve course', 'announcements', 'calendar events', 'get today']
+---
+
+The core tools cover everyday Canvas data you reach for most often: today's date, enrolled courses, fuzzy course lookup, announcements, and calendar events. Every other tool builds on the course IDs these tools surface.
+
+## get_today
+
+Returns today's date in ISO 8601 format (`YYYY-MM-DD`). Use this when you need a reliable current date without relying on client-side clocks or LLM knowledge cutoffs.
+
+**No parameters.**
+
+### Response
+
+<ResponseField name="today" type="string" required>
+  Today's date in ISO 8601 format, e.g. `"2025-09-01"`.
+</ResponseField>
+
+### Example
+
+```bash
+canvas tool run get_today --args '{}'
+```
+
+```json
+{ "today": "2025-09-01" }
+```
+
+---
+
+## list_courses
+
+Lists Canvas courses for the authenticated user. By default returns only starred (favorite) courses.
+
+### Parameters
+
+<ParamField path="favorites_only" type="boolean" default="true">
+  When `true`, returns only courses the user has starred in Canvas. Set to `false` to include all active enrollments. Defaults to `true`.
+</ParamField>
+
+<ParamField path="search" type="string">
+  Filter courses by name or course code. Case-insensitive substring match performed server-side.
+</ParamField>
+
+<ParamField path="limit" type="integer">
+  Maximum number of courses to return. Must be between `1` and `300`. Defaults to `50`.
+</ParamField>
+
+### Response
+
+<ResponseField name="source" type="string" required>
+  Either `"favorites"` (when `favorites_only` is true) or `"active-enrollments"`.
+</ResponseField>
+
+<ResponseField name="count" type="integer" required>
+  Number of courses returned.
+</ResponseField>
+
+<ResponseField name="courses" type="object[]" required>
+  <Expandable title="Course object fields">
+    <ResponseField name="id" type="string">
+      Canvas course ID.
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Full course name.
+    </ResponseField>
+    <ResponseField name="course_code" type="string">
+      Short course code, e.g. `"CMSC131"`.
+    </ResponseField>
+    <ResponseField name="term_name" type="string">
+      Enrollment term name, e.g. `"Fall 2025"`.
+    </ResponseField>
+    <ResponseField name="state" type="string">
+      Workflow state, e.g. `"available"` or `"completed"`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```bash
+canvas tool run list_courses --args '{"favorites_only": true, "limit": 10}'
+```
+
+```json
+{
+  "source": "favorites",
+  "count": 2,
+  "courses": [
+    {
+      "id": "112233",
+      "name": "Introduction to Algorithms",
+      "course_code": "CMSC351",
+      "term_name": "Fall 2025",
+      "state": "available"
+    }
+  ]
+}
+```
+
+---
+
+## resolve_course
+
+Fuzzy-matches a natural-language query against the user's Canvas courses and returns ranked matches. Useful when you have a partial course name or code and need to discover the right `course_id` before calling other tools.
+
+### Parameters
+
+<ParamField path="query" type="string" required>
+  The search string to match against course names and course codes. Supports partial strings and space-separated tokens.
+</ParamField>
+
+<ParamField path="favorites_only" type="boolean" default="true">
+  When `true`, searches only starred courses. Set to `false` to search all active enrollments. Defaults to `true`.
+</ParamField>
+
+<ParamField path="limit" type="integer">
+  Maximum number of matches to return. Must be between `1` and `20`. Defaults to `5`.
+</ParamField>
+
+### Response
+
+<ResponseField name="count" type="integer" required>
+  Number of matches found above the relevance threshold.
+</ResponseField>
+
+<ResponseField name="matches" type="object[]" required>
+  <Expandable title="Match object fields">
+    <ResponseField name="id" type="string">
+      Canvas course ID.
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Full course name.
+    </ResponseField>
+    <ResponseField name="course_code" type="string">
+      Short course code.
+    </ResponseField>
+    <ResponseField name="term_name" type="string">
+      Enrollment term name.
+    </ResponseField>
+    <ResponseField name="state" type="string">
+      Workflow state.
+    </ResponseField>
+    <ResponseField name="score" type="number">
+      Relevance score between `0.0` and `1.0`. Higher is a closer match.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```bash
+canvas tool run resolve_course --args '{"query": "algorithms", "limit": 3}'
+```
+
+```json
+{
+  "count": 1,
+  "matches": [
+    {
+      "id": "112233",
+      "name": "Introduction to Algorithms",
+      "course_code": "CMSC351",
+      "term_name": "Fall 2025",
+      "state": "available",
+      "score": 0.86
+    }
+  ]
+}
+```
+
+---
+
+## list_announcements
+
+Lists announcements for one or more courses. Results are filtered to active announcements by default and can be scoped to a date range.
+
+### Parameters
+
+<ParamField path="course_ids" type="string[]" required>
+  Array of Canvas course IDs to fetch announcements for. At least one ID is required.
+</ParamField>
+
+<Expandable title="Optional parameters">
+  <ParamField path="start_date" type="string">
+    ISO datetime string. Only return announcements posted on or after this date, e.g. `"2025-09-01T00:00:00Z"`.
+  </ParamField>
+
+  <ParamField path="end_date" type="string">
+    ISO datetime string. Only return announcements posted on or before this date.
+  </ParamField>
+
+  <ParamField path="active_only" type="boolean" default="true">
+    When `true`, returns only currently active announcements. Defaults to `true`.
+  </ParamField>
+
+  <ParamField path="limit" type="integer">
+    Maximum number of announcements to return. Must be between `1` and `300`. Defaults to `100`.
+  </ParamField>
+</Expandable>
+
+### Response
+
+<ResponseField name="course_ids" type="string[]" required>
+  The course IDs that were queried.
+</ResponseField>
+
+<ResponseField name="count" type="integer" required>
+  Number of announcements returned.
+</ResponseField>
+
+<ResponseField name="announcements" type="object[]" required>
+  <Expandable title="Announcement object fields">
+    <ResponseField name="id" type="string">
+      Announcement ID.
+    </ResponseField>
+    <ResponseField name="title" type="string">
+      Announcement title.
+    </ResponseField>
+    <ResponseField name="posted_at" type="string">
+      ISO datetime the announcement was posted.
+    </ResponseField>
+    <ResponseField name="context_code" type="string">
+      Canvas context code identifying the course, e.g. `"course_112233"`.
+    </ResponseField>
+    <ResponseField name="html_url" type="string">
+      Direct URL to the announcement in Canvas.
+    </ResponseField>
+    <ResponseField name="message" type="string">
+      Full announcement body (HTML).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```bash
+canvas tool run list_announcements --args '{"course_ids": ["112233", "445566"], "start_date": "2025-09-01T00:00:00Z", "limit": 20}'
+```
+
+---
+
+## list_calendar_events
+
+Lists calendar events and assignment due dates across one or more courses. Can be filtered by event type and date range.
+
+### Parameters
+
+<ParamField path="course_ids" type="string[]">
+  Array of Canvas course IDs to scope the calendar query. When omitted, Canvas returns events across all enrolled courses.
+</ParamField>
+
+<Expandable title="Optional parameters">
+  <ParamField path="type" type="string">
+    Filter by event type. Allowed values: `"event"`, `"assignment"`, `"both"`.
+  </ParamField>
+
+  <ParamField path="start_date" type="string">
+    ISO datetime string. Only return events starting on or after this date.
+  </ParamField>
+
+  <ParamField path="end_date" type="string">
+    ISO datetime string. Only return events ending on or before this date.
+  </ParamField>
+
+  <ParamField path="all_events" type="boolean">
+    When `true`, returns all events regardless of date. Omit to use Canvas default behavior.
+  </ParamField>
+
+  <ParamField path="limit" type="integer">
+    Maximum number of events to return. Must be between `1` and `300`. Defaults to `100`.
+  </ParamField>
+</Expandable>
+
+### Response
+
+<ResponseField name="course_ids" type="string[]" required>
+  The course IDs that were queried.
+</ResponseField>
+
+<ResponseField name="count" type="integer" required>
+  Number of events returned.
+</ResponseField>
+
+<ResponseField name="events" type="object[]" required>
+  <Expandable title="Event object fields">
+    <ResponseField name="id" type="string">
+      Event ID.
+    </ResponseField>
+    <ResponseField name="title" type="string">
+      Event or assignment title.
+    </ResponseField>
+    <ResponseField name="context_code" type="string">
+      Canvas context code, e.g. `"course_112233"`.
+    </ResponseField>
+    <ResponseField name="type" type="string">
+      `"event"` or `"assignment"`.
+    </ResponseField>
+    <ResponseField name="start_at" type="string">
+      ISO datetime the event starts (or assignment is due).
+    </ResponseField>
+    <ResponseField name="end_at" type="string">
+      ISO datetime the event ends.
+    </ResponseField>
+    <ResponseField name="all_day" type="boolean">
+      Whether this is an all-day event.
+    </ResponseField>
+    <ResponseField name="html_url" type="string">
+      Direct URL to the event in Canvas.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```bash
+canvas tool run list_calendar_events --args '{"course_ids": ["112233"], "type": "assignment", "start_date": "2025-09-01T00:00:00Z", "end_date": "2025-12-15T23:59:59Z"}'
+```
